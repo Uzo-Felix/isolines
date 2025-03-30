@@ -1,24 +1,27 @@
-import mslData from '../mslData'
+import RBush from "rbush";
+
 type Point = { x: number; y: number };
 type Segment = { start: Point; end: Point };
-type Grid = number[][];
+type BoundingBox = { minX: number; minY: number; maxX: number; maxY: number; segment: Segment };
 
 class Conrec {
-  private grid: Grid;
+  private grid: number[][];
   private xSize: number;
   private ySize: number;
   private levels: number[];
+  private rtree: RBush<BoundingBox>;
 
-  constructor(grid: Grid, levels: number[]) {
+  constructor(grid: number[][], levels: number[]) {
     this.grid = grid;
     this.ySize = grid.length;
     this.xSize = grid[0].length;
     this.levels = levels;
+    this.rtree = new RBush<BoundingBox>();
   }
 
   public generateIsolines(): Segment[][] {
     const isolines: Segment[][] = [];
-    
+
     for (const level of this.levels) {
       const segments: Segment[] = [];
       for (let i = 0; i < this.xSize - 1; i++) {
@@ -33,9 +36,15 @@ class Conrec {
           this.processSquare(square, level, segments);
         }
       }
-      isolines.push(segments);
+
+      // Insert segments into R-Tree for fast lookups
+      segments.forEach(segment => this.insertIntoRTree(segment));
+
+      // Connect segments into complete isolines
+      const connectedIsolines = this.connectIsolines(segments);
+      isolines.push(connectedIsolines);
     }
-    
+
     return isolines;
   }
 
@@ -56,15 +65,52 @@ class Conrec {
     }
 
     if (crossings.length === 2) {
-      segments.push({ start: crossings[0], end: crossings[1] });
+      const segment = { start: crossings[0], end: crossings[1] };
+      segments.push(segment);
     }
+  }
+
+  private insertIntoRTree(segment: Segment) {
+    this.rtree.insert({
+      minX: Math.min(segment.start.x, segment.end.x),
+      minY: Math.min(segment.start.y, segment.end.y),
+      maxX: Math.max(segment.start.x, segment.end.x),
+      maxY: Math.max(segment.start.y, segment.end.y),
+      segment
+    });
+  }
+
+  private connectIsolines(segments: Segment[]): Segment[] {
+    const connected: Segment[] = [];
+    const visited = new Set<Segment>();
+
+    for (const segment of segments) {
+      if (visited.has(segment)) continue;
+
+      let currentSegment = segment;
+      let isoline: Segment[] = [currentSegment];
+      visited.add(currentSegment);
+
+      while (true) {
+        const neighbors = this.rtree.search({
+          minX: currentSegment.end.x - 0.1, maxX: currentSegment.end.x + 0.1,
+          minY: currentSegment.end.y - 0.1, maxY: currentSegment.end.y + 0.1
+        });
+
+        const nextSegment = neighbors.find(n => !visited.has(n.segment))?.segment;
+        if (!nextSegment) break;
+
+        isoline.push(nextSegment);
+        visited.add(nextSegment);
+        currentSegment = nextSegment;
+      }
+
+      connected.push(...isoline);
+    }
+
+    return connected;
   }
 }
 
-const levels = [10, 12];
-const conrec = new Conrec(mslData, levels);
-const isolines = conrec.generateIsolines();
-
-console.log(isolines);
 
 export default Conrec;
