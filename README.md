@@ -1,46 +1,97 @@
-# Getting Started with Create React App
+# Isoline Visualization with Javascript
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A application for visualizing isolines, using:
+- CONREC algorithm for contour generation
 
-## Available Scripts
 
-In the project directory, you can run:
 
-### `npm start`
+## Features
+- Adaptive contour level calculation
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Prerequisites
+- Node.js v16+
+- npm/yarn
+- CSV data file (see [Data Preparation](#data-preparation))
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### 1. Clone Repository
+```bash
+git clone https://github.com/Uzo-Felix/isolines.git
+git branch -M main
+cd isolines
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 2. Install Dependencies
+```bash
+npm install
+# or
+yarn install
+```
 
-### `npm run build`
+### 3. Data Preparation
+1. **Obtain ERA5 Data**:
+   - Download MSLP data from [Copernicus Climate Data Store](https://cds.climate.copernicus.eu/)
+   - Use Panoply to export as CSV:
+     - File → Export → CSV
+     - Save as `msl.csv`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+mv msl.csv data/
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-### `npm run eject`
+### 4. Run Application
+```bash
+npm start
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Project Structure
+```text
+├── data/               
+│   └── msl.csv              # ERA5 data file 
+├── src/
+│   ├── components/          # Visualization components
+│   └── utils/               # CONREC algorithm implementation
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Key Implementation Details
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Data Processing
+- **Chunking**: 100 rows per chunk (configurable)
+- **Coordinate Handling**:
+  - Normalizes longitude (-180° to 180°)
+  - Special pole value handling
+- **Value Scaling**: Automatic contour level calculation
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### Visualization Features
+- Dynamic D3.js coordinate system
+- Viridis color scale for contour levels
+- Automatic gap closing (μ = 1.5√2)
+- Adaptive spatial indexing with grid buckets
 
-## Learn More
+### Performance Optimizations
+- Web Worker parallel processing
+- R-tree inspired spatial indexing
+- Memory-efficient TypedArrays
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Customization
+Modify in `src/App.tsx`:
+```typescript
+// Adjust contour levels
+const step = range / 10; // Change denominator for different level density
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+// Modify visualization parameters
+const xScale = d3.scaleLinear().domain([-180, 180])...
+```
+
+## Troubleshooting
+
+### Common Issues
+1. **Missing CSV File**
+   - Ensure `msl.csv` exists in data directory
+
+
+
+   

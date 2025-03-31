@@ -1,48 +1,48 @@
-import React, { useEffect, useRef } from "react";
-import * as d3 from "d3";
+import React, { useEffect, useRef } from 'react';
+import * as d3 from 'd3';
 
-type Point = { x: number; y: number };
-type Segment = { start: Point; end: Point };
-type IsolineChartProps = { isolines: Segment[][] };
+interface IsolineChartProps {
+    data: Array<{ x: number; y: number; value: number }>;
+    width: number;
+    height: number;
+    contourColor?: string;
+}
 
-const IsolineChart: React.FC<IsolineChartProps> = ({ isolines }) => {
-  const svgRef = useRef<SVGSVGElement | null>(null);
+const IsoLineChart: React.FC<IsolineChartProps> = ({ data, width, height, contourColor = 'steelblue' }) => {
+    const svgRef = useRef<SVGSVGElement | null>(null);
 
-  useEffect(() => {
-    if (!svgRef.current) return;
+    useEffect(() => {
+        if (!svgRef.current) return;
 
-    const width = 600;
-    const height = 400;
-    const xScale = d3.scaleLinear().domain([0, 10]).range([50, width - 50]); 
-    const yScale = d3.scaleLinear().domain([0, 10]).range([height - 50, 50]); 
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('*').remove(); // Clear previous content
 
-    const svg = d3.select(svgRef.current)
-      .attr("width", width)
-      .attr("height", height)
-      .style("background", "#f8f9fa")
-      .style("border", "1px solid #ddd");
+        const xScale = d3.scaleLinear()
+            .domain(d3.extent(data, d => d.x) as [number, number])
+            .range([0, width]);
 
-    // Remove previous isolines before drawing new ones
-    svg.selectAll("*").remove();
+        const yScale = d3.scaleLinear()
+            .domain(d3.extent(data, d => d.y) as [number, number])
+            .range([height, 0]);
 
-    // Define line generator
-    const lineGenerator = d3.line<Point>()
-      .x(d => xScale(d.x))
-      .y(d => yScale(d.y));
+        const contours = d3.contourDensity<{ x: number; y: number; value: number }>()
+            .x(d => d.x)
+            .y(d => d.y)
+            .size([width, height])
+            .bandwidth(20)
+            .thresholds(10)(data);
 
-    // Draw isolines
-    isolines.forEach((segments, index) => {
-      svg.append("path")
-        .datum(segments.flatMap(seg => [seg.start, seg.end])) // Convert to point list
-        .attr("d", lineGenerator)
-        .attr("stroke", d3.schemeCategory10[index % 10]) // Assign colors
-        .attr("stroke-width", 2)
-        .attr("fill", "none");
-    });
+        svg.selectAll('path')
+            .data(contours)
+            .enter()
+            .append('path')
+            .attr('d', d3.geoPath())
+            .attr('fill', contourColor)
+            .attr('stroke', 'white')
+            .attr('stroke-width', 0.5);
+    }, [data, width, height, contourColor]);
 
-  }, [isolines]);
-
-  return <svg ref={svgRef}></svg>;
+    return <svg ref={svgRef} width={width} height={height} />;
 };
 
-export default IsolineChart;
+export default IsoLineChart;

@@ -1,39 +1,51 @@
-import React, { useState, useEffect } from "react";
-import IsolineChart from "./components/IsoLineChart";
-import Conrec from "./utils/conrec";
-interface Segment {
-  start: { x: number; y: number };
-  end: { x: number; y: number };
-}
+import React, { useState, useEffect } from 'react';
+import './App.css';
+import IsoLineChart from './components/IsoLineChart';
+import * as d3 from 'd3';
+import Papa from 'papaparse';
 
 const App: React.FC = () => {
-  const [isolines, setIsolines] = useState<Segment[][]>([]);
+    const [transformedData, setTransformedData] = useState<Array<{ x: number; y: number; value: number }>>([]);
 
-  useEffect(() => {
-    const mslpData = [ [100430, 100440, 100450, 100460, 100470, 100480],
-    [100435, 100445, 100455, 100465, 100475, 100485],
-    [100440, 100450, 100460, 100470, 100480, 100490],
-    [100445, 100455, 100465, 100475, 100485, 100495],
-    [100450, 100460, 100470, 100480, 100490, 100500],
-    [100455, 100465, 100475, 100485, 100495, 100505],
-    [100460, 100470, 100480, 100490, 100500, 100510],
-    [100465, 100475, 100485, 100495, 100505, 100515],
-    [100470, 100480, 100490, 100500, 100510, 100520],
-    [100475, 100485, 100495, 100505, 100515, 100525],
-    [100480, 100490, 100500, 100510, 100520, 100530]
-];
+    useEffect(() => {
+        // Load and parse the CSV file
+        Papa.parse('./data/msl.csv', {
+            download: true,
+            header: false, // Assuming the CSV doesn't have headers
+            complete: (result) => {
+                const rawData = result.data as number[][]; // Assuming the CSV is a grid of numbers
+                const gridSize = rawData[0].length; // Number of columns in the CSV
 
-    // Define the contour levels
-    const levels = [100450, 100460, 100470, 100480, 100490, 100500];
-    const conrec = new Conrec(mslpData, levels);
-    setIsolines(conrec.generateIsolines());
-  }, []);
+                // Transform the data into x, y, value format
+                const data = rawData.flatMap((row, rowIndex) =>
+                    row.map((value, colIndex) => ({
+                        x: colIndex,
+                        y: rowIndex,
+                        value: parseFloat(value as unknown as string),
+                    }))
+                );
 
-  return (
-    <div>
-      <h2>Isoline Visualization</h2>
-      <IsolineChart isolines={isolines} />
-    </div>
-  );
+                setTransformedData(data);
+            },
+        });
+    }, []);
+
+    const config = {
+        width: window.innerWidth * 0.8, // 80% of the screen width
+    height: window.innerHeight * 0.8, // 80% of the screen height
+        colorScale: d3.scaleSequential(d3.interpolateBlues),
+    };
+
+    return (
+        <div className="App">
+            <h1>Isoline Visualization</h1>
+            {transformedData.length > 0 ? (
+                <IsoLineChart data={transformedData} width={config.width} height={config.height} />
+            ) : (
+                <p>Loading data...</p>
+            )}
+        </div>
+    );
 };
+
 export default App;
