@@ -1,48 +1,94 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
+interface Point {
+    lat: number;
+    lon: number;
+}
+
+interface Segment {
+    p1: Point;
+    p2: Point;
+}
+
 interface IsolineChartProps {
-    data: Array<{ x: number; y: number; value: number }>;
+    segments: Segment[];
     width: number;
     height: number;
     contourColor?: string;
 }
 
-const IsoLineChart: React.FC<IsolineChartProps> = ({ data, width, height, contourColor = 'steelblue' }) => {
+const IsoLineChart: React.FC<IsolineChartProps> = ({ 
+    segments, 
+    width, 
+    height, 
+    contourColor = 'steelblue' 
+}) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
 
     useEffect(() => {
-        if (!svgRef.current) return;
+        if (!svgRef.current || segments.length === 0) return;
 
         const svg = d3.select(svgRef.current);
-        svg.selectAll('*').remove(); // Clear previous content
+        svg.selectAll('*').remove(); 
+
+        const latExtent = d3.extent(
+            segments.flatMap(s => [s.p1.lat, s.p2.lat])
+        ) as [number, number];
+        
+        const lonExtent = d3.extent(
+            segments.flatMap(s => [s.p1.lon, s.p2.lon])
+        ) as [number, number];
+
+        const padding = 0.05;
+        const latRange = latExtent[1] - latExtent[0];
+        const lonRange = lonExtent[1] - lonExtent[0];
+        
+        const latPadding = latRange * padding;
+        const lonPadding = lonRange * padding;
 
         const xScale = d3.scaleLinear()
-            .domain(d3.extent(data, d => d.x) as [number, number])
+            .domain([lonExtent[0] - lonPadding, lonExtent[1] + lonPadding])
             .range([0, width]);
 
         const yScale = d3.scaleLinear()
-            .domain(d3.extent(data, d => d.y) as [number, number])
-            .range([height, 0]);
+            .domain([latExtent[0] - latPadding, latExtent[1] + latPadding])
+            .range([height, 0]); 
 
-        const contours = d3.contourDensity<{ x: number; y: number; value: number }>()
-            .x(d => d.x)
-            .y(d => d.y)
-            .size([width, height])
-            .bandwidth(20)
-            .thresholds(10)(data);
+        const isolineGroup = svg.append('g')
+            .attr('class', 'isolines');
 
-        svg.selectAll('path')
-            .data(contours)
+        isolineGroup.selectAll('line')
+            .data(segments)
             .enter()
-            .append('path')
-            .attr('d', d3.geoPath())
-            .attr('fill', contourColor)
-            .attr('stroke', 'white')
-            .attr('stroke-width', 0.5);
-    }, [data, width, height, contourColor]);
+            .append('line')
+            .attr('x1', d => xScale(d.p1.lon))
+            .attr('y1', d => yScale(d.p1.lat))
+            .attr('x2', d => xScale(d.p2.lon))
+            .attr('y2', d => yScale(d.p2.lat))
+            .attr('stroke', contourColor)
+            .attr('stroke-width', 1.5)
+            .attr('opacity', 0.8);
 
-    return <svg ref={svgRef} width={width} height={height} />;
+        svg.append('rect')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('fill', 'none')
+            .attr('stroke', '#ccc')
+            .attr('stroke-width', 1);
+
+    }, [segments, width, height, contourColor]);
+
+    return (
+        <div className="chart-container">
+            <svg ref={svgRef} width={width} height={height} />
+            {segments.length === 0 && (
+                <div className="no-data-message">
+                    No segments to display
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default IsoLineChart;
