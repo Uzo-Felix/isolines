@@ -49,7 +49,7 @@ npm start
 
 ## Project Structure
 ```text
-├── data/               
+├── public/data/               
 │   └── msl.csv              # ERA5 data file 
 ├── src/
 │   ├── components/          # Visualization components
@@ -85,7 +85,7 @@ const step = range / 10; // Change denominator for different level density
 // Modify visualization parameters
 const xScale = d3.scaleLinear().domain([-180, 180])...
 ```
-
+![alt text](image.png)
 ## Troubleshooting
 
 ### Common Issues
