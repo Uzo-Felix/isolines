@@ -1,116 +1,82 @@
-import RBush from "rbush";
-
-type Point = { x: number; y: number };
-type Segment = { start: Point; end: Point };
-type BoundingBox = { minX: number; minY: number; maxX: number; maxY: number; segment: Segment };
-
-class Conrec {
-  private grid: number[][];
-  private xSize: number;
-  private ySize: number;
-  private levels: number[];
-  private rtree: RBush<BoundingBox>;
-
-  constructor(grid: number[][], levels: number[]) {
-    this.grid = grid;
-    this.ySize = grid.length;
-    this.xSize = grid[0].length;
-    this.levels = levels;
-    this.rtree = new RBush<BoundingBox>();
-  }
-
-  public generateIsolines(): Segment[][] {
-    const isolines: Segment[][] = [];
-
-    for (const level of this.levels) {
-      const segments: Segment[] = [];
-      for (let i = 0; i < this.xSize - 1; i++) {
-        for (let j = 0; j < this.ySize - 1; j++) {
-          const square = [
-            { x: i, y: j, value: this.grid[j][i] },
-            { x: i + 1, y: j, value: this.grid[j][i + 1] },
-            { x: i + 1, y: j + 1, value: this.grid[j + 1][i + 1] },
-            { x: i, y: j + 1, value: this.grid[j + 1][i] }
-          ];
-
-          this.processSquare(square, level, segments);
-        }
-      }
-
-      // Insert segments into R-Tree for fast lookups
-      segments.forEach(segment => this.insertIntoRTree(segment));
-
-      // Connect segments into complete isolines
-      const connectedIsolines = this.connectIsolines(segments);
-      isolines.push(connectedIsolines);
-    }
-
-    return isolines;
-  }
-
-  private processSquare(square: { x: number; y: number; value: number }[], level: number, segments: Segment[]) {
-    const crossings: Point[] = [];
-
-    for (let i = 0; i < 4; i++) {
-      const p1 = square[i];
-      const p2 = square[(i + 1) % 4];
-
-      if ((p1.value < level && p2.value >= level) || (p2.value < level && p1.value >= level)) {
-        const ratio = (level - p1.value) / (p2.value - p1.value);
-        crossings.push({
-          x: p1.x + ratio * (p2.x - p1.x),
-          y: p1.y + ratio * (p2.y - p1.y)
-        });
-      }
-    }
-
-    if (crossings.length === 2) {
-      const segment = { start: crossings[0], end: crossings[1] };
-      segments.push(segment);
-    }
-  }
-
-  private insertIntoRTree(segment: Segment) {
-    this.rtree.insert({
-      minX: Math.min(segment.start.x, segment.end.x),
-      minY: Math.min(segment.start.y, segment.end.y),
-      maxX: Math.max(segment.start.x, segment.end.x),
-      maxY: Math.max(segment.start.y, segment.end.y),
-      segment
-    });
-  }
-
-  private connectIsolines(segments: Segment[]): Segment[] {
-    const connected: Segment[] = [];
-    const visited = new Set<Segment>();
-
-    for (const segment of segments) {
-      if (visited.has(segment)) continue;
-
-      let currentSegment = segment;
-      let isoline: Segment[] = [currentSegment];
-      visited.add(currentSegment);
-
-      while (true) {
-        const neighbors = this.rtree.search({
-          minX: currentSegment.end.x - 0.1, maxX: currentSegment.end.x + 0.1,
-          minY: currentSegment.end.y - 0.1, maxY: currentSegment.end.y + 0.1
-        });
-
-        const nextSegment = neighbors.find(n => !visited.has(n.segment))?.segment;
-        if (!nextSegment) break;
-
-        isoline.push(nextSegment);
-        visited.add(nextSegment);
-        currentSegment = nextSegment;
-      }
-
-      connected.push(...isoline);
-    }
-
-    return connected;
-  }
+export interface Point {
+  lat: number;
+  lon: number;
 }
 
+export interface Segment {
+  p1: Point;
+  p2: Point;
+}
 
-export default Conrec;
+export class Conrec {
+  private static readonly EPSILON = 0.0001;
+
+  computeSegments(grid: number[][], levels: number[]): Segment[] {
+    const segments: Segment[] = [];
+    const rows = grid.length;
+    const cols = grid[0].length;
+
+    for (let lat = 0; lat < rows - 1; lat++) {
+      for (let lon = 0; lon < cols - 1; lon++) {
+        const z = [
+          grid[lat][lon],         
+          grid[lat][lon + 1],    
+          grid[lat + 1][lon + 1], 
+          grid[lat + 1][lon]      
+        ];
+
+        for (const level of levels) {
+          this.processGridCell(z, level, lat, lon, segments);
+        }
+      }
+    }
+    return segments;
+  }
+
+  private processGridCell(z: number[], level: number, lat: number, lon: number, segments: Segment[]): void {
+    let caseIndex = 0;
+    if (z[0] >= level) caseIndex |= 1;
+    if (z[1] >= level) caseIndex |= 2;
+    if (z[2] >= level) caseIndex |= 4;
+    if (z[3] >= level) caseIndex |= 8;
+
+    if (caseIndex === 0 || caseIndex === 15) return;
+
+    const points: Point[] = [];
+    
+    if ((caseIndex & 1) !== ((caseIndex & 2) >> 1)) {
+      points.push(this.interpolate(z[0], z[1], level, lat, lon, lat, lon + 1));
+    }
+    
+    if ((caseIndex & 2) !== ((caseIndex & 4) >> 1)) {
+      points.push(this.interpolate(z[1], z[2], level, lat, lon + 1, lat + 1, lon + 1));
+    }
+    
+    if ((caseIndex & 4) !== ((caseIndex & 8) >> 1)) {
+      points.push(this.interpolate(z[2], z[3], level, lat + 1, lon + 1, lat + 1, lon));
+    }
+    
+    if ((caseIndex & 8) !== ((caseIndex & 1) << 3)) {
+      points.push(this.interpolate(z[3], z[0], level, lat + 1, lon, lat, lon));
+    }
+
+    if (points.length === 2) {
+      segments.push({ p1: points[0], p2: points[1] });
+    } else if (points.length === 4) {
+      segments.push({ p1: points[0], p2: points[1] });
+      segments.push({ p1: points[2], p2: points[3] });
+    }
+  }
+
+  private interpolate(z1: number, z2: number, level: number, lat1: number, lon1: number, lat2: number, lon2: number): Point {
+    if (Math.abs(z1 - z2) < Conrec.EPSILON) {
+      return { lat: lat1, lon: lon1 };
+    }
+    
+    const t = (level - z1) / (z2 - z1);
+    return {
+      lat: lat1 + t * (lat2 - lat1),
+      lon: lon1 + t * (lon2 - lon1)
+    };
+  }
+}
