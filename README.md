@@ -85,7 +85,9 @@ const step = range / 10; // Change denominator for different level density
 // Modify visualization parameters
 const xScale = d3.scaleLinear().domain([-180, 180])...
 ```
-![alt text](image.png)
+![image](https://github.com/user-attachments/assets/4651133d-4a04-4cf3-a670-4733aab6d7ae)
+
+
 ## Troubleshooting
 
 ### Common Issues
