@@ -33,10 +33,27 @@ export class IsolineBuilder {
                 iterations++;
                 
                 const neighbors = index.get(this.hashPoint(current)) || [];
-                const nextSegment = neighbors.find(seg => 
+                const candidates = neighbors.filter(seg => 
                     unused.has(seg) && 
                     (this.pointsEqual(seg.p1, current) || this.pointsEqual(seg.p2, current))
                 );
+                
+                if (candidates.length === 0) break;
+                
+                // Apply heuristic: choose segment with farthest endpoint from previous point
+                let nextSegment: Segment | null = null;
+                let maxDistance = -Infinity;
+                
+                for (const seg of candidates) {
+                    const endpoint = this.pointsEqual(seg.p1, current) ? seg.p2 : seg.p1;
+                    const prevPoint = poly[poly.length - 2] || current; // Fallback to current
+                    const dist = this.distance(prevPoint, endpoint);
+                    
+                    if (dist > maxDistance) {
+                        maxDistance = dist;
+                        nextSegment = seg;
+                    }
+                }
                 
                 if (!nextSegment) break;
                 
@@ -65,6 +82,12 @@ export class IsolineBuilder {
     
     private hashPoint(point: Point): string {
         return `${point.lat.toFixed(6)},${point.lon.toFixed(6)}`;
+    }
+    
+    private distance(p1: Point, p2: Point): number {
+        const dx = p1.lon - p2.lon;
+        const dy = p1.lat - p2.lat;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 }
 
