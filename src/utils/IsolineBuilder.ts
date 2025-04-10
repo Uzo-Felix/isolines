@@ -5,7 +5,7 @@ type Polygon = Point[];
 export class IsolineBuilder {
     private static readonly EPSILON = 0.000001;
 
-    buildIsolines(segments: Segment[]): Polygon[] {
+    buildIsolines(segments: Segment[], gridResolution: number = 1): Polygon[] {
         const isolines: Polygon[] = [];
         const unused = new Set(segments);
         const index = new Map<string, Segment[]>();
@@ -68,8 +68,90 @@ export class IsolineBuilder {
             isolines.push(poly);
         }
         
-        return isolines;
+        // Apply the ISOLINE-GLUE-U algorithm to merge unclosed isolines
+        return this.mergeUnclosedIsolines(isolines, gridResolution);
     }    
+    private mergeUnclosedIsolines(isolines: Polygon[], gridResolution: number): Polygon[] {
+        const closed: Polygon[] = [];
+        const unclosed: Polygon[] = [];
+        const μ = Math.sqrt(2) * gridResolution * 1.5; // Slightly larger threshold for better merging
+        
+        // Separate closed and unclosed isolines
+        isolines.forEach(poly => {
+            this.isClosed(poly) ? closed.push(poly) : unclosed.push(poly);
+        });
+        
+        console.log(`Initial isolines: ${isolines.length} (${closed.length} closed, ${unclosed.length} unclosed)`);
+        
+        let mergeIterations = 0;
+        const MAX_MERGE_ITERATIONS = unclosed.length * 2; // Safety limit
+        
+        while (unclosed.length > 0 && mergeIterations < MAX_MERGE_ITERATIONS) {
+            mergeIterations++;
+            
+            const current = unclosed.pop()!;
+            let bestMatch: { poly: Polygon, distance: number, startToEnd: boolean } | null = null;
+            let bestIndex = -1;
+            
+            // Find closest unclosed isoline within μ distance
+            for (let i = 0; i < unclosed.length; i++) {
+                const target = unclosed[i];
+                
+                // Check if current's end connects to target's start
+                const dEndToStart = this.distance(current[current.length - 1], target[0]);
+                
+                // Check if current's start connects to target's end
+                const dStartToEnd = this.distance(current[0], target[target.length - 1]);
+                
+                if (dEndToStart < μ || dStartToEnd < μ) {
+                    const minDist = Math.min(dEndToStart, dStartToEnd);
+                    const isStartToEnd = dStartToEnd < dEndToStart;
+                    
+                    if (!bestMatch || minDist < bestMatch.distance) {
+                        bestMatch = { 
+                            poly: target, 
+                            distance: minDist,
+                            startToEnd: isStartToEnd
+                        };
+                        bestIndex = i;
+                    }
+                }
+            }
+            
+            // Merge if match found
+            if (bestMatch && bestIndex >= 0) {
+                let merged: Polygon;
+                
+                if (bestMatch.startToEnd) {
+                    // current's start connects to target's end
+                    // Reverse current and append target
+                    merged = [...current.slice().reverse(), ...bestMatch.poly];
+                } else {
+                    // current's end connects to target's start
+                    merged = [...current, ...bestMatch.poly];
+                }
+                
+                unclosed.splice(bestIndex, 1);
+                
+                // Check if the merged polyline forms a closed loop
+                if (this.isClosed(merged)) {
+                    closed.push(merged);
+                } else {
+                    unclosed.push(merged);
+                }
+            } else {
+                // No match found, treat as a separate isoline
+                closed.push(current);
+            }
+        }
+        
+        // Handle any remaining unclosed isolines
+        closed.push(...unclosed);
+        
+        console.log(`Final isolines after merging: ${closed.length}`);
+        return closed;
+    }
+    
     private isClosed(poly: Polygon): boolean {
         return poly.length > 2 && 
                this.pointsEqual(poly[0], poly[poly.length - 1]);

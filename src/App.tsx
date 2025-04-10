@@ -118,9 +118,18 @@ const App: React.FC = () => {
 
                             console.log('Generated segments:', computedSegments.length);
 
+                            // Calculate grid resolution based on data dimensions
+                            const latRange = numericData.length > 1 ?
+                                Math.abs(numericData[1][0] - numericData[0][0]) : 1;
+                            const lonRange = numericData[0].length > 1 ?
+                                Math.abs(numericData[0][1] - numericData[0][0]) : 1;
+                            const gridResolution = Math.max(latRange, lonRange);
+
+                            console.log("Grid resolution:", gridResolution);
+                            
                             // Build isolines from segments
                             const builder = new IsolineBuilder();
-                            const computedIsolines = builder.buildIsolines(computedSegments);
+                            const computedIsolines = builder.buildIsolines(computedSegments, gridResolution);
 
                             console.log('Generated isolines:', computedIsolines.length);
 
@@ -170,9 +179,9 @@ const App: React.FC = () => {
             ) : (
                 <>
                     <div className="controls">
-                        <button onClick={toggleRawSegments}>
+                        {/* <button onClick={toggleRawSegments}>
                             {showRawSegments ? "Hide Raw Segments" : "Show Raw Segments"}
-                        </button>
+                        </button> */}
                         <div className="stats">
                             <p>Segments: {segments.length} | Isolines: {isolines.length}</p>
                         </div>
