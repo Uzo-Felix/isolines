@@ -2,6 +2,7 @@
 
 /data
 /public/data
+/docs
 
 /src/data
 /src/public/data
@@ -28,3 +29,4 @@ msl.csv
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.qodo
