@@ -1,6 +1,7 @@
 const Conrec = require('./conrec');
 const IsolineBuilder = require('./isolineBuilder');
 const SpatialIndex = require('./spatialIndex');
+const TiledIsolineBuilder = require('./tiledIsolineBuilder');
 
 /**
  * Generate isolines from an array of values and convert to GeoJSON
@@ -8,6 +9,9 @@ const SpatialIndex = require('./spatialIndex');
  * @param {Object} options - Configuration options
  * @param {number} [options.width] - Width of the grid (optional, defaults to square grid)
  * @param {number} [options.height] - Height of the grid (optional)
+ * @param {number} [options.tileSize] - Size of tiles for large datasets (optional, default 128)
+ * @param {boolean} [options.forceTiled] - Force using tiled processing even for small datasets
+ * @param {number[]} [options.levels] - Custom contour levels (optional)
  * @returns {Object} - GeoJSON FeatureCollection
  */
 function generateIsolinesFromValues(values, options = {}) {
@@ -15,13 +19,19 @@ function generateIsolinesFromValues(values, options = {}) {
     throw new Error('Values must be a non-empty array of numbers');
   }
   
-  // If width is not provided, assume a square grid
   const width = options.width || Math.ceil(Math.sqrt(values.length));
   
-  // If height is not provided, calculate based on width and array length
   const height = options.height || Math.ceil(values.length / width);
   
-  // Convert 1D array to 2D grid
+  const tileSize = options.tileSize || 128;
+  
+  const useTiled = options.forceTiled || (values.length > tileSize * tileSize);
+  
+  if (useTiled) {
+    console.log(`Using tiled processing for dataset (${width}x${height})`);
+    return generateIsolinesFromValuesTiled(values, width, height, options);
+  }
+  
   const grid = [];
   for (let i = 0; i < height; i++) {
     const row = [];
@@ -32,11 +42,68 @@ function generateIsolinesFromValues(values, options = {}) {
     grid.push(row);
   }
   
-  // Create contour levels - use the unique values from the input array
-  const levels = [...new Set(values)].sort((a, b) => a - b);
+  const levels = options.levels || [...new Set(values)].sort((a, b) => a - b);
   
-  // Generate isolines
   return generateIsolines(grid, levels);
+}
+
+/**
+ * Generate isolines from a large array of values using tiled processing
+ * @private
+ */
+function generateIsolinesFromValuesTiled(values, width, height, options = {}) {
+  const tileSize = options.tileSize || 128;
+  
+  let levels;
+  if (options.levels && options.levels.length > 0) {
+    levels = options.levels;
+  } else {
+    const min = Math.min(...values.filter(v => !isNaN(v)));
+    const max = Math.max(...values.filter(v => !isNaN(v)));
+    const step = (max - min) / 10;
+    levels = Array.from({ length: 10 }, (_, i) => min + (i + 0.5) * step);
+  }
+  
+  const builder = new TiledIsolineBuilder(levels, tileSize);
+  
+  const tilesX = Math.ceil(width / tileSize);
+  const tilesY = Math.ceil(height / tileSize);
+  
+  console.log(`Grid will be split into ${tilesX}x${tilesY} tiles`);
+  
+  for (let tileY = 0; tileY < tilesY; tileY++) {
+    for (let tileX = 0; tileX < tilesX; tileX++) {
+      const tileData = extractTile(values, width, height, tileX, tileY, tileSize);
+      
+      builder.addTile(tileY, tileX, tileData);
+    }
+  }
+  
+  return builder.getIsolinesAsGeoJSON();
+}
+
+/**
+ * Extract a tile from a large array
+ * @private
+ */
+function extractTile(values, width, height, tileX, tileY, tileSize) {
+  const tileData = [];
+  
+  const startY = tileY * tileSize;
+  const endY = Math.min(startY + tileSize, height);
+  const startX = tileX * tileSize;
+  const endX = Math.min(startX + tileSize, width);
+  
+  for (let y = startY; y < endY; y++) {
+    const row = [];
+    for (let x = startX; x < endX; x++) {
+      const index = y * width + x;
+      row.push(index < values.length ? values[index] : 0);
+    }
+    tileData.push(row);
+  }
+  
+  return tileData;
 }
 
 /**
@@ -46,7 +113,6 @@ function generateIsolinesFromValues(values, options = {}) {
  * @returns {Object} - GeoJSON FeatureCollection
  */
 function generateIsolines(grid, levels) {
-  // Validate input
   if (!Array.isArray(grid) || grid.length === 0 || !Array.isArray(grid[0])) {
     throw new Error('Invalid grid: must be a non-empty 2D array');
   }
@@ -55,18 +121,14 @@ function generateIsolines(grid, levels) {
     throw new Error('Invalid levels: must be a non-empty array of numbers');
   }
   
-  // Generate contour segments
   const conrec = new Conrec();
   const segments = conrec.computeSegments(grid, levels);
   
-  // Calculate grid resolution based on data dimensions
   const gridResolution = 1; // Default value
   
-  // Build isolines from segments
   const builder = new IsolineBuilder();
   const isolines = builder.buildIsolines(segments, gridResolution);
   
-  // Convert isolines to GeoJSON
   return isolinesToGeoJSON(isolines);
 }
 
@@ -77,10 +139,8 @@ function generateIsolines(grid, levels) {
  */
 function isolinesToGeoJSON(isolines) {
   const features = isolines.map(isoline => {
-    // Convert to GeoJSON coordinates format [lon, lat]
     const coordinates = isoline.map(point => [point.lon, point.lat]);
     
-    // Ensure the polygon is closed
     if (!isPolygonClosed(coordinates)) {
       coordinates.push([...coordinates[0]]);
     }
@@ -121,5 +181,6 @@ module.exports = {
   generateIsolines,
   Conrec,
   IsolineBuilder,
-  SpatialIndex
+  SpatialIndex,
+  TiledIsolineBuilder
 };
