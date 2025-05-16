@@ -10,7 +10,7 @@ Isolines-JS implements a three-stage method for efficient isoline construction:
 2. **Spatial Indexing**: Employs spatial indexing to accelerate neighbor segment search
 3. **Polygon Construction**: Connects segments into closed polygons for efficient visualization and GIS operations
 
-<!-- The tool is designed for on-the-fly isoline construction from large gridded datasets, making it suitable for interactive web applications. -->
+The tool is designed for on-the-fly isoline construction from large gridded datasets, making it suitable for interactive web applications and integration with tile-based services like WMTS.
 
 ## Features
 
@@ -21,6 +21,8 @@ Isolines-JS implements a three-stage method for efficient isoline construction:
 - Customizable contour levels
 - Handles coordinate system peculiarities and data gaps
 - Ensures closed polygons for GIS operations
+- **Tile-based processing** for integration with WMTS and other tile services
+- Incremental isoline construction as tiles arrive
 
 ## Usage
 
@@ -41,6 +43,9 @@ Generates isolines from a 1D array of values.
 - `options`: (Optional) Configuration object
   - `width`: Width of the grid (optional, defaults to square grid)
   - `height`: Height of the grid (optional)
+  - `tileSize`: Size of tiles for large datasets (optional, default 128)
+  - `forceTiled`: Force using tiled processing even for small datasets
+  - `levels`: Custom contour levels (optional)
 
 Returns a GeoJSON FeatureCollection.
 
@@ -58,6 +63,7 @@ Returns a GeoJSON FeatureCollection.
 - `Conrec`: Implements the CONREC algorithm for generating contour segments from grid cells
 - `IsolineBuilder`: Builds continuous isolines from contour segments and ensures polygons are closed
 - `SpatialIndex`: Provides spatial indexing for efficient neighbor segment lookup
+- `TiledIsolineBuilder`: Handles incremental isoline generation from tiled grid data
 
 ## Implementation Details
 
@@ -68,6 +74,7 @@ The tool follows the methodology described in the paper:
 3. **Segment Connection**: Employs heuristics to connect segments into continuous isolines
 4. **Polygon Closure**: Ensures all isolines form closed polygons for GIS operations
 5. **Handling Unclosed Isolines**: Implements special techniques to handle gaps in data
+6. **Tile-based Processing**: Supports incremental construction of isolines as data tiles arrive
 
 ## Usage Examples
 
@@ -91,12 +98,37 @@ const geojson = isolines.generateIsolinesFromValues(values, {
 
 console.log(JSON.stringify(geojson, null, 2));
 ```
+
+### Tile-based Processing Example
+
+```javascript
+const { TiledIsolineBuilder } = require('./src/index');
+
+// Create a tiled isoline builder with contour levels and tile size
+const builder = new TiledIsolineBuilder([15, 25, 35, 45, 55, 65, 75, 85], 128);
+
+// Add tiles as they become available
+builder.addTile(0, 0, tile1Data);
+builder.addTile(0, 1, tile2Data);
+builder.addTile(1, 0, tile3Data);
+
+// Get the current state of isolines at any point
+const currentIsolines = builder.getIsolinesAsGeoJSON();
+```
+
 ### Command-line GeoJSON Generation
 
 The repo contains a command-line tool to generate GeoJSON files from input values:
 
 ```bash
+# Basic usage
 node src/visualize/generate-geojson.js "[10, 20, 30, 40, 50, 60, 70, 80, 90]"
+
+# Process a CSV file with options
+node src/visualize/generate-geojson.js data.csv "{\"sampleEvery\":4,\"tileSize\":128}"
+
+# Simulate WMTS tile-by-tile arrival
+node src/visualize/generate-geojson.js --simulate-wmts data.csv "{\"tileSize\":128,\"randomOrder\":true}"
 ```
 
 This will process the input values and save the resulting GeoJSON to `src/visualize/output/isolines.geojson`.
@@ -160,14 +192,29 @@ Example output:
 - The tool implements chunked processing to handle large CSV files efficiently
 - Progress tracking is available for long-running operations
 - Connecting segments into polygons significantly reduces the number of objects for visualization
+- For very large datasets, the tile-based approach provides better memory efficiency
+- Automatic sampling (every 4 points) is applied to datasets with more than 1 million values
 
-<!-- ## Applications
+## WMTS Integration
 
-This library is particularly useful for:
+The tool includes special support for integration with Web Map Tile Service (WMTS) and other tile-based services:
+
+- **Incremental Processing**: Build isolines as tiles arrive, rather than requiring the entire grid at once
+- **Tile Boundary Handling**: Properly merge isolines that cross tile boundaries
+- **Edge Point Tracking**: Maintain edge points to facilitate merging across tiles
+- **Simulation Tools**: Test and visualize how isolines evolve as tiles arrive in different orders
+
+This makes the tool suitable for applications where data is served in parts via tile-based protocols, and the entire grid is not available at once.
+
+## Applications
+
+This tool is particularly useful for:
 
 - Meteorological data visualization (pressure, temperature, etc.)
 - Terrain elevation mapping
-- Any application requiring contour lines from gridded data -->
+- Web-based GIS applications with large datasets
+- Applications requiring integration with tile-based services
+- Any application requiring contour lines from gridded data
 
 ## Research Background
 
