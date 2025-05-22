@@ -1,1259 +1,1230 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Isolines from Large CSV Data</title>
-        <link
-            rel="stylesheet"
-            href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-        />
-        <style>
-            body {
-                margin: 0;
-                padding: 0;
-                font-family: Arial, sans-serif;
-            }
-            .container {
-                display: flex;
-                height: 100vh;
-            }
-            .sidebar {
-                width: 350px;
-                padding: 20px;
-                background: #f5f5f5;
-                overflow-y: auto;
-            }
-            .main {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-            }
-            #map {
-                flex: 1;
-            }
-            textarea {
-                width: 100%;
-                height: 150px;
-                margin-bottom: 10px;
-                font-family: monospace;
-            }
-            .form-group {
-                margin-bottom: 15px;
-            }
-            label {
-                display: block;
-                margin-bottom: 5px;
-                font-weight: bold;
-            }
-            button {
-                padding: 8px 12px;
-                background: #4caf50;
-                color: white;
-                border: none;
-                cursor: pointer;
-                margin-right: 5px;
-            }
-            button:hover {
-                background: #45a049;
-            }
-            .error {
-                color: red;
-                margin-top: 10px;
-            }
-            .success {
-                color: green;
-                margin-top: 10px;
-            }
-            .warning {
-                color: orange;
-                margin-top: 10px;
-            }
-            .color-legend {
-                display: flex;
-                flex-wrap: wrap;
-                margin-top: 10px;
-            }
-            .color-item {
-                padding: 5px;
-                margin: 2px;
-                color: white;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            .file-input {
-                margin-bottom: 10px;
-            }
-            .progress-container {
-                width: 100%;
-                background-color: #ddd;
-                margin-top: 10px;
-            }
-            .progress-bar {
-                height: 20px;
-                background-color: #4caf50;
-                width: 0%;
-                text-align: center;
-                line-height: 20px;
-                color: white;
-            }
-            select {
-                width: 100%;
-                padding: 5px;
-                margin-bottom: 10px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="sidebar">
-                <h2>Large CSV to Isolines</h2>
 
-                <div class="form-group">
-                    <label for="csvFile">Import CSV File:</label>
-                    <input
-                        type="file"
-                        id="csvFile"
-                        accept=".csv"
-                        class="file-input"
-                    >
-                    <button id="importBtn">Import</button>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isolines Visualization Tool</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 350px;
+            padding: 20px;
+            background: #f5f5f5;
+            overflow-y: auto;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map {
+            flex: 1;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        button {
+            padding: 8px 12px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+
+        .warning {
+            color: orange;
+            margin-top: 10px;
+        }
+
+        .color-legend {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .color-item {
+            padding: 5px;
+            margin: 2px;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .file-input {
+            margin-bottom: 10px;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #ddd;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background-color: #4caf50;
+            width: 0%;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+
+        select {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-group {
+            margin-bottom: 10px;
+        }
+
+        .checkbox-label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-label input {
+            margin-right: 8px;
+        }
+
+        .tab-container {
+            margin-bottom: 15px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .tab-button {
+            padding: 8px 12px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 2px;
+            cursor: pointer;
+        }
+
+        .tab-button.active {
+            background: #4caf50;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 15px;
+            background: #f9f9f9;
+            border: 1px solid #ccc;
+            border-top: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .performance-stats {
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Isolines Visualization Tool</h2>
+
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="data-tab">Data</button>
+                    <button class="tab-button" data-tab="settings-tab">Settings</button>
+                    <button class="tab-button" data-tab="advanced-tab">Advanced</button>
                 </div>
 
-                <div class="form-group">
-                    <label for="csvData"
-                    >CSV Data (Preview - showing first 5 rows, 10
-                        columns):</label>
-                    <textarea
-                        id="csvData"
-                        placeholder="CSV data preview will appear here"
-                        readonly
-                    ></textarea>
-                    <p
-                        class="warning"
-                        id="previewWarning"
-                        style="display: none"
-                    >
-                        Large dataset detected - showing limited preview only
-                    </p>
+                <div id="data-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="csvFile">Import CSV File:</label>
+                        <input type="file" id="csvFile" accept=".csv" class="file-input">
+                        <button id="importBtn">Import</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="csvData">CSV Data Preview:</label>
+                        <textarea id="csvData" placeholder="CSV data preview will appear here" readonly></textarea>
+                        <p class="warning" id="previewWarning" style="display: none">
+                            Large dataset detected - showing limited preview only
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <button id="sampleDataBtn">Load Sample Data</button>
+                        <button id="sampleGeoDataBtn">Load Geographic Sample</button>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="downsampleFactor">Downsample Factor:</label>
-                    <select id="downsampleFactor">
-                        <option value="2">2x (1/4 size)</option>
-                        <option value="4" selected>4x (1/16 size)</option>
-                        <option value="8">8x (1/64 size)</option>
-                        <option value="16">16x (1/256 size)</option>
-                        <option value="32">32x (1/1024 size)</option>
-                    </select>
-                    <p class="warning">
-                        Higher values = faster processing but less detail
-                    </p>
+                <div id="settings-tab" class="tab-content">
+                    <div class="form-group">
+                        <label for="downsampleFactor">Downsample Factor:</label>
+                        <select id="downsampleFactor">
+                            <option value="1">No downsampling</option>
+                            <option value="2">2x (1/4 size)</option>
+                            <option value="4" selected>4x (1/16 size)</option>
+                            <option value="8">8x (1/64 size)</option>
+                            <option value="16">16x (1/256 size)</option>
+                            <option value="32">32x (1/1024 size)</option>
+                        </select>
+                        <p class="warning">
+                            Higher values = faster processing but less detail
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contourLevels">Number of Contour Levels:</label>
+                        <select id="contourLevels">
+                            <option value="5">5 levels</option>
+                            <option value="10" selected>10 levels</option>
+                            <option value="15">15 levels</option>
+                            <option value="20">20 levels</option>
+                            <option value="custom">Custom levels</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="customLevelsGroup" style="display: none;">
+                        <label for="customLevels">Custom Levels (comma-separated):</label>
+                        <input type="text" id="customLevels" placeholder="e.g., 10,20,30,40,50">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="colorScheme">Color Scheme:</label>
+                        <select id="colorScheme">
+                            <option value="rainbow" selected>Rainbow</option>
+                            <option value="viridis">Viridis</option>
+                            <option value="plasma">Plasma</option>
+                            <option value="terrain">Terrain</option>
+                            <option value="heat">Heat</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="contourLevels">Number of Contour Levels:</label>
-                    <select id="contourLevels">
-                        <option value="5">5 levels</option>
-                        <option value="10" selected>10 levels</option>
-                        <option value="15">15 levels</option>
-                        <option value="20">20 levels</option>
-                    </select>
+                <div id="advanced-tab" class="tab-content">
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="enablePoleHandling" checked>
+                                Enable Pole Handling
+                            </label>
+                            <p class="warning">
+                                Averages values at poles for geographic data
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="enableMeridianHandling" checked>
+                                Enable 180° Meridian Handling
+                            </label>
+                            <p class="warning">
+                                Handles wrapping at the antimeridian
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="useTiledProcessing">
+                                Use Tiled Processing
+                            </label>
+                            <p class="warning">
+                                Better for very large datasets
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tileSize">Tile Size (if using tiled processing):</label>
+                        <select id="tileSize">
+                            <option value="64">64×64</option>
+                            <option value="128" selected>128×128</option>
+                            <option value="256">256×256</option>
+                        </select>
+                    </div>
                 </div>
-
-                <div class="form-group">
-                    <button id="generateBtn">Generate Isolines</button>
-                    <button id="sampleDataBtn">Load Sample Data</button>
-                    <button
-                        id="cancelBtn"
-                        style="background-color: #f44336; display: none"
-                    >
-                        Cancel
-                    </button>
-                </div>
-
-                <div
-                    id="progress-container"
-                    class="progress-container"
-                    style="display: none"
-                >
-                    <div id="progress-bar" class="progress-bar">0%</div>
-                </div>
-
-                <div id="message" class="success"></div>
-                <div id="warning" class="warning"></div>
-                <div id="error" class="error"></div>
-
-                <h3>Color Legend</h3>
-                <div id="legend" class="color-legend"></div>
-
-                <h3>Statistics</h3>
-                <div id="stats"></div>
             </div>
 
-            <div class="main">
-                <div id="map"></div>
+            <div class="form-group">
+                <button id="generateBtn">Generate Isolines</button>
+                <button id="cancelBtn" style="background-color: #f44336; display: none">
+                    Cancel
+                </button>
             </div>
+
+            <div id="progress-container" class="progress-container" style="display: none">
+                <div id="progress-bar" class="progress-bar">0%</div>
+            </div>
+
+            <div id="message" class="success"></div>
+            <div id="warning" class="warning"></div>
+            <div id="error" class="error"></div>
+
+            <h3>Color Legend</h3>
+            <div id="legend" class="color-legend"></div>
+
+            <h3>Statistics</h3>
+            <div id="stats"></div>
+
+            <div id="performance" class="performance-stats"></div>
         </div>
 
-        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-        <script
-            src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"
-        ></script>
-        <script src="../conrec.js"></script>
-        <script src="../isolineBuilder.js"></script>
-        <script src="../spatialIndex.js"></script>
-        <script src="../index.js"></script>
-        <script>
-            // Make imported classes available in the global scope
-            if (typeof Conrec !== "undefined") {
-                window.Conrec = Conrec;
-            }
-            if (typeof IsolineBuilder !== "undefined") {
-                window.IsolineBuilder = IsolineBuilder;
-            }
-            if (typeof SpatialIndex !== "undefined") {
-                window.SpatialIndex = SpatialIndex;
-            }
-            if (typeof generateIsolines !== "undefined") {
-                window.generateIsolines = generateIsolines;
-            }
+        <div class="main">
+            <div id="map"></div>
+        </div>
+    </div>
 
-            // Initialize the map
-            const map = L.map("map").setView([0, 0], 3);
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="../conrec.js"></script>
+    <script src="../isolineBuilder.js"></script>
+    <script src="../spatialIndex.js"></script>
+    <script src="../tiledIsolineBuilder.js"></script>
+    <script src="../index.js"></script>
+    <script>
+        // Make imported classes and functions available in the global scope
+        // First check if they're defined as module exports
+        if (typeof module !== 'undefined' && module.exports) {
+            // If we're in a CommonJS environment, we need to extract from module.exports
+            window.Conrec = module.exports.Conrec || Conrec;
+            window.IsolineBuilder = module.exports.IsolineBuilder || IsolineBuilder;
+            window.SpatialIndex = module.exports.SpatialIndex || SpatialIndex;
+            window.TiledIsolineBuilder = module.exports.TiledIsolineBuilder || TiledIsolineBuilder;
+            window.generateIsolines = module.exports.generateIsolines;
+            window.generateIsolinesFromValues = module.exports.generateIsolinesFromValues;
+        } else {
+            // Direct assignment if they're already in global scope
+            window.Conrec = typeof Conrec !== "undefined" ? Conrec : null;
+            window.IsolineBuilder = typeof IsolineBuilder !== "undefined" ? IsolineBuilder : null;
+            window.SpatialIndex = typeof SpatialIndex !== "undefined" ? SpatialIndex : null;
+            window.TiledIsolineBuilder = typeof TiledIsolineBuilder !== "undefined" ? TiledIsolineBuilder : null;
+        }
 
-            // Add a base map layer
-            L.tileLayer(
-                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                {
-                    attribution:
-                        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                },
-            ).addTo(map);
-
-            // Layer group for isolines
-            const isolinesLayer = L.layerGroup().addTo(map);
-
-            // Global variables for processing
-            let csvData = null;
-            let processingCancelled = false;
-            let worker = null;
-
-            // Color scale for different levels
-            function getColor(level, min, max) {
-                // Rainbow color scale
-                const hue = 240 -
-                    (240 * (level - min) / (max - min));
-                return `hsl(${hue}, 100%, 50%)`;
-            }
-
-            // Update the legend
-            function updateLegend(levels) {
-                const min = Math.min(...levels);
-                const max = Math.max(...levels);
-
-                const legend = document.getElementById(
-                    "legend",
-                );
-                legend.innerHTML = "";
-
-                // Create 7 evenly spaced legend items
-                const step = (max - min) / 6;
-                for (let i = 0; i < 7; i++) {
-                    const level = min + i * step;
-                    const color = getColor(level, min, max);
-                    const item = document.createElement("div");
-                    item.className = "color-item";
-                    item.style.backgroundColor = color;
-                    item.textContent = level.toFixed(1);
-                    legend.appendChild(item);
+        // If functions aren't available, define them directly
+        if (typeof generateIsolines === "undefined") {
+            window.generateIsolines = function (grid, levels) {
+                // Validate input
+                if (!Array.isArray(grid) || grid.length === 0 || !Array.isArray(grid[0])) {
+                    throw new Error('Invalid grid: must be a non-empty 2D array');
                 }
-            }
 
-            // Parse CSV data with streaming for large files
-            function parseCSVData(file, onComplete) {
-                // Clear messages
-                document.getElementById("message").textContent =
-                    "";
-                document.getElementById("warning").textContent =
-                    "";
-                document.getElementById("error").textContent =
-                    "";
-
-                // Show progress bar
-                const progressContainer = document
-                    .getElementById("progress-container");
-                const progressBar = document.getElementById(
-                    "progress-bar",
-                );
-                progressContainer.style.display = "block";
-                progressBar.style.width = "0%";
-                progressBar.textContent = "0%";
-
-                // Show cancel button
-                document.getElementById("cancelBtn").style
-                    .display = "inline-block";
-
-                // Reset cancellation flag
-                processingCancelled = false;
-
-                try {
-                    let rowCount = 0;
-                    let grid = [];
-                    let isFirstRowHeader = false;
-
-                    Papa.parse(file, {
-                        worker: true, // Use a worker thread for large files
-                        skipEmptyLines: true,
-                        dynamicTyping: true,
-                        chunk: function (results, parser) {
-                            if (processingCancelled) {
-                                parser.abort();
-                                return;
-                            }
-
-                            // Process the chunk
-                            let chunkData = results.data;
-
-                            // Check if the first row might be headers (only on first chunk)
-                            if (
-                                rowCount === 0 &&
-                                chunkData.length > 0
-                            ) {
-                                const firstRow = chunkData[0];
-                                isFirstRowHeader = firstRow &&
-                                    firstRow.some((val) =>
-                                        typeof val ===
-                                            "string" &&
-                                        isNaN(Number(val))
-                                    );
-
-                                if (isFirstRowHeader) {
-                                    console.log(
-                                        "First row appears to be headers, skipping it",
-                                    );
-                                    chunkData = chunkData.slice(
-                                        1,
-                                    );
-                                }
-                            }
-
-                            // Convert string values to numbers
-                            const convertedData = chunkData.map(
-                                (row) =>
-                                    row.map((val) => {
-                                        if (
-                                            typeof val ===
-                                                "number"
-                                        ) return val;
-                                        if (
-                                            typeof val ===
-                                                "string"
-                                        ) {
-                                            // Try to convert string to number
-                                            const num = Number(
-                                                val.replace(
-                                                    /,/g,
-                                                    ".",
-                                                ),
-                                            );
-                                            return isNaN(num)
-                                                ? NaN
-                                                : num;
-                                        }
-                                        return NaN;
-                                    }),
-                            );
-
-                            // Filter out any non-numeric rows/values
-                            const numericData = convertedData
-                                .filter((row) =>
-                                    row.length > 0 &&
-                                    row.some((val) =>
-                                        !isNaN(val)
-                                    )
-                                )
-                                .map((row) =>
-                                    row.map((val) =>
-                                        isNaN(val) ? 0 : val
-                                    )
-                                ); // Replace NaN with 0
-
-                            // Add to grid
-                            grid = grid.concat(numericData);
-
-                            // Update row count
-                            rowCount += numericData.length;
-
-                            // Update progress (approximate)
-                            const progress = Math.min(
-                                results.meta.cursor /
-                                    file.size * 100,
-                                99,
-                            );
-                            progressBar.style.width = progress +
-                                "%";
-                            progressBar.textContent =
-                                Math.round(progress) + "%";
-
-                            // Update preview - only show a small sample of the data
-                            if (rowCount > 0) {
-                                // Create a preview with limited rows and columns
-                                const previewRows = grid.slice(
-                                    0,
-                                    5,
-                                );
-                                const preview = previewRows.map(
-                                    (row) => {
-                                        // Limit the number of columns shown
-                                        const displayRow = row
-                                            .slice(0, 10);
-                                        // Add ellipsis if there are more columns
-                                        return displayRow.join(
-                                            ",",
-                                        ) + (row.length > 10
-                                            ? ",..."
-                                            : "");
-                                    },
-                                ).join("\n");
-
-                                // Add ellipsis if there are more rows
-                                const previewText = preview +
-                                    (grid.length > 5
-                                        ? "\n..."
-                                        : "");
-                                document.getElementById(
-                                    "csvData",
-                                ).value = previewText;
-                            }
-                        },
-                        complete: function () {
-                            if (processingCancelled) {
-                                progressContainer.style
-                                    .display = "none";
-                                document.getElementById(
-                                    "cancelBtn",
-                                ).style.display = "none";
-                                document.getElementById(
-                                    "message",
-                                ).textContent =
-                                    "Processing cancelled";
-                                return;
-                            }
-
-                            // Complete progress
-                            progressBar.style.width = "100%";
-                            progressBar.textContent = "100%";
-
-                            // Hide cancel button
-                            document.getElementById("cancelBtn")
-                                .style.display = "none";
-
-                            if (
-                                grid.length === 0 ||
-                                grid[0].length === 0
-                            ) {
-                                progressContainer.style
-                                    .display = "none";
-                                document.getElementById("error")
-                                    .textContent =
-                                        "No valid numeric data found in CSV";
-                                return;
-                            }
-
-                            // Update stats
-                            document.getElementById("stats")
-                                .innerHTML = `
-        <p>Rows: ${grid.length}</p>
-        <p>Columns: ${grid[0].length}</p>
-        <p>Total cells: ${grid.length * grid[0].length}</p>
-    `;
-
-                            // Show warning for very large datasets
-                            if (
-                                grid.length * grid[0].length >
-                                    1000000
-                            ) {
-                                document.getElementById(
-                                    "warning",
-                                ).textContent =
-                                    "Very large dataset detected. Processing may take a while and could cause browser performance issues.";
-                                document.getElementById(
-                                    "previewWarning",
-                                ).style.display = "block";
-                            } else {
-                                document.getElementById(
-                                    "previewWarning",
-                                ).style.display = "none";
-                            }
-
-                            document.getElementById("message")
-                                .textContent =
-                                    "CSV data parsed successfully!";
-
-                            // Store the grid data
-                            csvData = grid;
-
-                            // Call the completion callback
-                            if (onComplete) onComplete(grid);
-                        },
-                        error: function (error) {
-                            progressContainer.style.display =
-                                "none";
-                            document.getElementById("error")
-                                .textContent =
-                                    `CSV parsing error: ${error.message}`;
-                            console.error(
-                                "Error parsing CSV:",
-                                error,
-                            );
-                        },
-                    });
-                } catch (error) {
-                    progressContainer.style.display = "none";
-                    document.getElementById("error")
-                        .textContent = error.message;
-                    console.error("Error parsing CSV:", error);
+                if (!Array.isArray(levels) || levels.length === 0) {
+                    throw new Error('Invalid levels: must be a non-empty array of numbers');
                 }
-            }
 
-            // Downsample grid for large datasets
-            function downsampleGrid(grid, factor) {
-                if (factor <= 1) return grid;
+                // Generate contour segments
+                const conrec = new Conrec();
+                const segments = conrec.computeSegments(grid, levels);
 
-                const rows = grid.length;
-                const cols = grid[0].length;
-                const newRows = Math.ceil(rows / factor);
-                const newCols = Math.ceil(cols / factor);
+                // Calculate grid resolution based on data dimensions
+                const gridResolution = 1; // Default value
 
-                const result = [];
+                // Build isolines from segments
+                const builder = new IsolineBuilder();
+                const isolines = builder.buildIsolines(segments, gridResolution);
 
-                for (let i = 0; i < newRows; i++) {
+                // Convert isolines to GeoJSON
+                return isolinesToGeoJSON(isolines);
+            };
+        }
+
+        if (typeof generateIsolinesFromValues === "undefined") {
+            window.generateIsolinesFromValues = function (values, options = {}) {
+                if (!Array.isArray(values) || values.length === 0) {
+                    throw new Error('Values must be a non-empty array of numbers');
+                }
+
+                // If width is not provided, assume a square grid
+                const width = options.width || Math.ceil(Math.sqrt(values.length));
+
+                // If height is not provided, calculate based on width and array length
+                const height = options.height || Math.ceil(values.length / width);
+
+                // Convert 1D array to 2D grid
+                const grid = [];
+                for (let i = 0; i < height; i++) {
                     const row = [];
-                    for (let j = 0; j < newCols; j++) {
-                        // Average values in the factor x factor block
-                        let sum = 0;
-                        let count = 0;
-
-                        for (let di = 0; di < factor; di++) {
-                            for (
-                                let dj = 0;
-                                dj < factor;
-                                dj++
-                            ) {
-                                const ri = i * factor + di;
-                                const cj = j * factor + dj;
-
-                                if (ri < rows && cj < cols) {
-                                    sum += grid[ri][cj];
-                                    count++;
-                                }
-                            }
-                        }
-
-                        row.push(count > 0 ? sum / count : 0);
+                    for (let j = 0; j < width; j++) {
+                        const index = i * width + j;
+                        row.push(index < values.length ? values[index] : 0);
                     }
-                    result.push(row);
+                    grid.push(row);
                 }
 
-                return result;
+                // Create contour levels - use the unique values from the input array or custom levels
+                const levels = options.levels || [...new Set(values)].sort((a, b) => a - b);
+
+                // Generate isolines
+                return generateIsolines(grid, levels);
+            };
+        }
+
+        // Define helper function for GeoJSON conversion
+        function isolinesToGeoJSON(isolines) {
+            const features = isolines.map(isoline => {
+                // Convert to GeoJSON coordinates format [lon, lat]
+                const coordinates = isoline.map(point => [point.lon, point.lat]);
+
+                // Ensure the polygon is closed
+                if (!isPolygonClosed(coordinates)) {
+                    coordinates.push([...coordinates[0]]);
+                }
+
+                return {
+                    type: 'Feature',
+                    properties: {
+                        level: isoline.level
+                    },
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [coordinates]
+                    }
+                };
+            });
+
+            return {
+                type: 'FeatureCollection',
+                features: features
+            };
+        }
+
+        function isPolygonClosed(coordinates) {
+            if (coordinates.length < 2) return false;
+
+            const first = coordinates[0];
+            const last = coordinates[coordinates.length - 1];
+
+            return first[0] === last[0] && first[1] === last[1];
+        }
+
+        // Initialize the map
+        const map = L.map("map").setView([0, 0], 3);
+
+        // Add a base map layer
+        L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            },
+        ).addTo(map);
+
+        // Layer group for isolines
+        const isolinesLayer = L.layerGroup().addTo(map);
+
+        // Global variables for processing
+        let csvData = null;
+        let processingCancelled = false;
+        let worker = null;
+        let isGeographicData = false;
+
+        // Tab functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and content
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                const tabId = button.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Show/hide custom levels input based on selection
+        document.getElementById('contourLevels').addEventListener('change', function () {
+            const customLevelsGroup = document.getElementById('customLevelsGroup');
+            if (this.value === 'custom') {
+                customLevelsGroup.style.display = 'block';
+            } else {
+                customLevelsGroup.style.display = 'none';
             }
+        });
 
-            // Generate isolines from CSV data with chunked processing
-            function generateIsolinesForLargeData() {
-                // Clear previous isolines
-                isolinesLayer.clearLayers();
+        // Color schemes
+        const colorSchemes = {
+            rainbow: (level, min, max) => {
+                const hue = 240 - (240 * (level - min) / (max - min));
+                return `hsl(${hue}, 100%, 50%)`;
+            },
+            viridis: (level, min, max) => {
+                const t = (level - min) / (max - min);
+                // Simplified viridis approximation
+                const r = Math.max(0, Math.min(255, Math.round(68 - 236 * t + 424 * t * t - 184 * t * t * t)));
+                const g = Math.max(0, Math.min(255, Math.round(1 + 248 * t - 122 * t * t - 160 * t * t * t)));
+                const b = Math.max(0, Math.min(255, Math.round(84 + 158 * t + 30 * t * t - 108 * t * t * t)));
+                return `rgb(${r}, ${g}, ${b})`;
+            },
+            plasma: (level, min, max) => {
+                const t = (level - min) / (max - min);
+                // Simplified plasma approximation
+                const r = Math.max(0, Math.min(255, Math.round(13 + 257 * t - 117 * t * t)));
+                const g = Math.max(0, Math.min(255, Math.round(23 + 77 * t + 183 * t * t - 259 * t * t * t)));
+                const b = Math.max(0, Math.min(255, Math.round(138 + 73 * t - 283 * t * t + 123 * t * t * t)));
+                return `rgb(${r}, ${g}, ${b})`;
+            },
+            terrain: (level, min, max) => {
+                const t = (level - min) / (max - min);
+                let r, g, b;
 
-                // Check if we have data
-                if (!csvData || csvData.length === 0) {
-                    document.getElementById("error")
-                        .textContent =
-                            "No data available. Please import a CSV file first.";
-                    return;
+                if (t < 0.5) {
+                    // Blue to green transition (water to land)
+                    r = Math.round(0 + 144 * (t * 2));
+                    g = Math.round(65 + 190 * (t * 2));
+                    b = Math.round(255 - 255 * (t * 2));
+                } else {
+                    // Green to brown to white transition (land to mountains)
+                    const t2 = (t - 0.5) * 2;
+                    r = Math.round(144 + 111 * t2);
+                    g = Math.round(255 - 155 * t2);
+                    b = Math.round(0 + 155 * t2);
                 }
 
-                // Clear messages
-                document.getElementById("message").textContent =
-                    "";
-                document.getElementById("warning").textContent =
-                    "";
-                document.getElementById("error").textContent =
-                    "";
+                return `rgb(${r}, ${g}, ${b})`;
+            },
+            heat: (level, min, max) => {
+                const t = (level - min) / (max - min);
+                let r, g, b;
 
-                // Show progress bar
-                const progressContainer = document
-                    .getElementById("progress-container");
-                const progressBar = document.getElementById(
-                    "progress-bar",
-                );
-                progressContainer.style.display = "block";
-                progressBar.style.width = "0%";
-                progressBar.textContent = "0%";
+                if (t < 0.5) {
+                    // Blue to yellow transition
+                    r = Math.round(0 + 510 * t);
+                    g = Math.round(0 + 510 * t);
+                    b = Math.round(255 - 510 * t);
+                } else {
+                    // Yellow to red transition
+                    r = 255;
+                    g = Math.round(255 - 510 * (t - 0.5));
+                    b = 0;
+                }
 
-                // Show cancel button
-                document.getElementById("cancelBtn").style
-                    .display = "inline-block";
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+        };
 
-                // Reset cancellation flag
-                processingCancelled = false;
+        // Get color based on selected scheme
+        function getColor(level, min, max) {
+            const scheme = document.getElementById('colorScheme').value;
+            return colorSchemes[scheme](level, min, max);
+        }
 
-                try {
-                    // Get the downsample factor
-                    const downsampleFactor = parseInt(
-                        document.getElementById(
-                            "downsampleFactor",
-                        ).value,
-                        10,
-                    );
+        // Update the legend
+        function updateLegend(levels) {
+            const min = Math.min(...levels);
+            const max = Math.max(...levels);
 
-                    // Get the number of contour levels
-                    const numLevels = parseInt(
-                        document.getElementById("contourLevels")
-                            .value,
-                        10,
-                    );
+            const legend = document.getElementById("legend");
+            legend.innerHTML = "";
 
-                    // Update progress
-                    progressBar.style.width = "10%";
-                    progressBar.textContent =
-                        "10% - Downsampling";
+            // Create 7 evenly spaced legend items
+            const step = (max - min) / 6;
+            for (let i = 0; i < 7; i++) {
+                const level = min + i * step;
+                const color = getColor(level, min, max);
+                const item = document.createElement("div");
+                item.className = "color-item";
+                item.style.backgroundColor = color;
+                item.textContent = level.toFixed(1);
+                legend.appendChild(item);
+            }
+        }
 
-                    // Use setTimeout to prevent UI freezing
-                    setTimeout(() => {
+        // Parse CSV data with streaming for large files
+        function parseCSVData(file, onComplete) {
+            // Clear messages
+            document.getElementById("message").textContent = "";
+            document.getElementById("warning").textContent = "";
+            document.getElementById("error").textContent = "";
+            document.getElementById("performance").textContent = "";
+
+            // Show progress bar
+            const progressContainer = document.getElementById("progress-container");
+            const progressBar = document.getElementById("progress-bar");
+            progressContainer.style.display = "block";
+            progressBar.style.width = "0%";
+            progressBar.textContent = "0%";
+
+            // Show cancel button
+            document.getElementById("cancelBtn").style.display = "inline-block";
+
+            // Reset cancellation flag
+            processingCancelled = false;
+
+            try {
+                let rowCount = 0;
+                let grid = [];
+                let isFirstRowHeader = false;
+                let headerRow = null;
+
+                Papa.parse(file, {
+                    worker: true, // Use a worker thread for large files
+                    skipEmptyLines: true,
+                    dynamicTyping: true,
+                    chunk: function (results, parser) {
                         if (processingCancelled) {
-                            progressContainer.style.display =
-                                "none";
-                            document.getElementById("cancelBtn")
-                                .style.display = "none";
-                            document.getElementById("message")
-                                .textContent =
-                                    "Processing cancelled";
+                            parser.abort();
                             return;
                         }
 
-                        try {
-                            // Downsample the grid
-                            const grid = downsampleGrid(
-                                csvData,
-                                downsampleFactor,
+                        // Process the chunk
+                        let chunkData = results.data;
+
+                        // Check if the first row might be headers (only on first chunk)
+                        if (rowCount === 0 && chunkData.length > 0) {
+                            const firstRow = chunkData[0];
+                            isFirstRowHeader = firstRow && firstRow.some((val) =>
+                                typeof val === "string" && isNaN(Number(val))
                             );
 
-                            // Update progress
-                            progressBar.style.width = "20%";
-                            progressBar.textContent =
-                                "20% - Calculating levels";
+                            if (isFirstRowHeader) {
+                                console.log("First row appears to be headers, skipping it");
+                                headerRow = chunkData[0];
+                                chunkData = chunkData.slice(1);
 
-                            // Flatten the array to find min/max values
-                            const flatData = grid.flat().filter(
-                                (val) => !isNaN(val),
-                            );
-                            const min = Math.min(...flatData);
-                            const max = Math.max(...flatData);
+                                // Check if this might be geographic data
+                                const headerStr = headerRow.join(',').toLowerCase();
+                                isGeographicData = headerStr.includes('lat') && headerStr.includes('lon');
+                                if (isGeographicData) {
+                                    console.log("Geographic data detected");
+                                }
+                            }
+                        }
 
-                            // Create contour levels
+                        // Convert string values to numbers
+                        const convertedData = chunkData.map(
+                            (row) =>
+                                row.map((val) => {
+                                    if (typeof val === "number") return val;
+                                    if (typeof val === "string") {
+                                        // Try to convert string to number
+                                        const num = Number(val.replace(/,/g, "."));
+                                        return isNaN(num) ? NaN : num;
+                                    }
+                                    return NaN;
+                                }),
+                        );
+
+                        // Filter out any non-numeric rows/values
+                        const numericData = convertedData
+                            .filter((row) =>
+                                row.length > 0 && row.some((val) => !isNaN(val))
+                            )
+                            .map((row) =>
+                                row.map((val) => isNaN(val) ? 0 : val)
+                            ); // Replace NaN with 0
+
+                        // Add to grid
+                        grid = grid.concat(numericData);
+
+                        // Update row count
+                        rowCount += numericData.length;
+
+                        // Update progress (approximate)
+                        const progress = Math.min(results.meta.cursor / file.size * 100, 99);
+                        progressBar.style.width = progress + "%";
+                        progressBar.textContent = Math.round(progress) + "%";
+
+                        // Update preview - only show a small sample of the data
+                        if (rowCount > 0) {
+                            // Create a preview with limited rows and columns
+                            const previewRows = grid.slice(0, 5);
+                            const preview = previewRows.map(
+                                (row) => {
+                                    // Limit the number of columns shown
+                                    const displayRow = row.slice(0, 10);
+                                    // Add ellipsis if there are more columns
+                                    return displayRow.join(",") + (row.length > 10 ? ",..." : "");
+                                },
+                            ).join("\n");
+
+                            // Add ellipsis if there are more rows
+                            const previewText = preview + (grid.length > 5 ? "\n..." : "");
+                            document.getElementById("csvData").value = previewText;
+                        }
+                    },
+                    complete: function () {
+                        if (processingCancelled) {
+                            progressContainer.style.display = "none";
+                            document.getElementById("cancelBtn").style.display = "none";
+                            document.getElementById("message").textContent = "Processing cancelled";
+                            return;
+                        }
+
+                        // Complete progress
+                        progressBar.style.width = "100%";
+                        progressBar.textContent = "100%";
+
+                        // Hide cancel button
+                        document.getElementById("cancelBtn").style.display = "none";
+
+                        if (grid.length === 0 || grid[0].length === 0) {
+                            progressContainer.style.display = "none";
+                            document.getElementById("error").textContent = "No valid numeric data found in CSV";
+                            return;
+                        }
+
+                        // Update stats
+                        document.getElementById("stats").innerHTML = `
+                                <p>Rows: ${grid.length}</p>
+                                <p>Columns: ${grid[0].length}</p>
+                                <p>Total cells: ${grid.length * grid[0].length}</p>
+                                <p>Data type: ${isGeographicData ? 'Geographic' : 'Regular grid'}</p>
+                            `;
+
+                        // Show warning for very large datasets
+                        if (grid.length * grid[0].length > 1000000) {
+                            document.getElementById("warning").textContent =
+                                "Very large dataset detected. Processing may take a while and could cause browser performance issues.";
+                            document.getElementById("previewWarning").style.display = "block";
+                        } else {
+                            document.getElementById("previewWarning").style.display = "none";
+                        }
+
+                        document.getElementById("message").textContent = "CSV data parsed successfully!";
+
+                        // Store the grid data
+                        csvData = grid;
+
+                        // Call the completion callback
+                        if (onComplete) onComplete(grid);
+                    },
+                    error: function (error) {
+                        progressContainer.style.display = "none";
+                        document.getElementById("error").textContent = `CSV parsing error: ${error.message}`;
+                        console.error("Error parsing CSV:", error);
+                    },
+                });
+            } catch (error) {
+                progressContainer.style.display = "none";
+                document.getElementById("error").textContent = error.message;
+                console.error("Error parsing CSV:", error);
+            }
+        }
+
+        // Downsample grid for large datasets
+        function downsampleGrid(grid, factor) {
+            if (factor <= 1) return grid;
+
+            const rows = grid.length;
+            const cols = grid[0].length;
+            const newRows = Math.ceil(rows / factor);
+            const newCols = Math.ceil(cols / factor);
+
+            const result = [];
+
+            for (let i = 0; i < newRows; i++) {
+                const row = [];
+                for (let j = 0; j < newCols; j++) {
+                    // Average values in the factor x factor block
+                    let sum = 0;
+                    let count = 0;
+
+                    for (let di = 0; di < factor; di++) {
+                        for (let dj = 0; dj < factor; dj++) {
+                            const ri = i * factor + di;
+                            const cj = j * factor + dj;
+
+                            if (ri < rows && cj < cols) {
+                                sum += grid[ri][cj];
+                                count++;
+                            }
+                        }
+                    }
+
+                    row.push(count > 0 ? sum / count : 0);
+                }
+                result.push(row);
+            }
+
+            return result;
+        }
+
+        // Handle poles for geographic data
+        function handlePoles(grid) {
+            if (!document.getElementById("enablePoleHandling").checked) {
+                return grid;
+            }
+
+            const rows = grid.length;
+            const cols = grid[0].length;
+
+            // Create a copy of the grid
+            const result = grid.map(row => [...row]);
+
+            // Handle North Pole (first row)
+            let northPoleSum = 0;
+            for (let j = 0; j < cols; j++) {
+                northPoleSum += grid[0][j];
+            }
+            const northPoleAvg = northPoleSum / cols;
+            for (let j = 0; j < cols; j++) {
+                result[0][j] = northPoleAvg;
+            }
+
+            // Handle South Pole (last row)
+            let southPoleSum = 0;
+            for (let j = 0; j < cols; j++) {
+                southPoleSum += grid[rows - 1][j];
+            }
+            const southPoleAvg = southPoleSum / cols;
+            for (let j = 0; j < cols; j++) {
+                result[rows - 1][j] = southPoleAvg;
+            }
+
+            return result;
+        }
+
+        // Handle 180° meridian for geographic data
+        function handleMeridian(grid) {
+            if (!document.getElementById("enableMeridianHandling").checked) {
+                return grid;
+            }
+
+            const rows = grid.length;
+            const cols = grid[0].length;
+
+            // Create a copy of the grid
+            const result = grid.map(row => [...row]);
+
+            // Average the first and last column (180° E/W)
+            for (let i = 0; i < rows; i++) {
+                const avgValue = (grid[i][0] + grid[i][cols - 1]) / 2;
+                result[i][0] = avgValue;
+                result[i][cols - 1] = avgValue;
+            }
+
+            return result;
+        }
+
+        // Generate isolines from CSV data with chunked processing
+        function generateIsolinesForLargeData() {
+            // Clear previous isolines
+            isolinesLayer.clearLayers();
+
+            // Check if we have data
+            if (!csvData || csvData.length === 0) {
+                document.getElementById("error").textContent =
+                    "No data available. Please import a CSV file first.";
+                return;
+            }
+
+            // Clear messages
+            document.getElementById("message").textContent = "";
+            document.getElementById("warning").textContent = "";
+            document.getElementById("error").textContent = "";
+            document.getElementById("performance").textContent = "";
+
+            // Show progress bar
+            const progressContainer = document.getElementById("progress-container");
+            const progressBar = document.getElementById("progress-bar");
+            progressContainer.style.display = "block";
+            progressBar.style.width = "0%";
+            progressBar.textContent = "0%";
+
+            // Show cancel button
+            document.getElementById("cancelBtn").style.display = "inline-block";
+
+            // Reset cancellation flag
+            processingCancelled = false;
+
+            // Start performance tracking
+            const startTime = performance.now();
+            let lastStepTime = startTime;
+
+            try {
+                // Get the downsample factor
+                const downsampleFactor = parseInt(
+                    document.getElementById("downsampleFactor").value,
+                    10
+                );
+
+                // Get the number of contour levels or custom levels
+                let levels = [];
+                const contourLevelsSelect = document.getElementById("contourLevels");
+
+                if (contourLevelsSelect.value === 'custom') {
+                    // Parse custom levels
+                    const customLevelsInput = document.getElementById("customLevels").value;
+                    levels = customLevelsInput.split(',')
+                        .map(level => parseFloat(level.trim()))
+                        .filter(level => !isNaN(level));
+
+                    if (levels.length === 0) {
+                        document.getElementById("error").textContent = "Invalid custom levels. Please enter comma-separated numbers.";
+                        progressContainer.style.display = "none";
+                        document.getElementById("cancelBtn").style.display = "none";
+                        return;
+                    }
+                } else {
+                    const numLevels = parseInt(contourLevelsSelect.value, 10);
+                    // Levels will be calculated after downsampling
+                }
+
+                // Update progress
+                progressBar.style.width = "10%";
+                progressBar.textContent = "10% - Preprocessing";
+
+                // Log performance
+                const preprocessTime = performance.now();
+                document.getElementById("performance").textContent =
+                    `Preprocessing: ${(preprocessTime - lastStepTime).toFixed(2)}ms`;
+                lastStepTime = preprocessTime;
+
+                // Use setTimeout to prevent UI freezing
+                setTimeout(() => {
+                    if (processingCancelled) {
+                        progressContainer.style.display = "none";
+                        document.getElementById("cancelBtn").style.display = "none";
+                        document.getElementById("message").textContent = "Processing cancelled";
+                        return;
+                    }
+
+                    try {
+                        // Downsample the grid
+                        let grid = downsampleGrid(csvData, downsampleFactor);
+
+                        // Apply geographic data handling if needed
+                        if (isGeographicData) {
+                            grid = handlePoles(grid);
+                            grid = handleMeridian(grid);
+                        }
+
+                        // Update progress
+                        progressBar.style.width = "20%";
+                        progressBar.textContent = "20% - Calculating levels";
+
+                        // Log performance
+                        const downsampleTime = performance.now();
+                        document.getElementById("performance").textContent +=
+                            `\nDownsampling: ${(downsampleTime - lastStepTime).toFixed(2)}ms`;
+                        lastStepTime = downsampleTime;
+
+                        // Flatten the array to find min/max values
+                        const flatData = grid.flat().filter(val => !isNaN(val));
+                        const min = Math.min(...flatData);
+                        const max = Math.max(...flatData);
+
+                        // Create contour levels if not custom
+                        if (contourLevelsSelect.value !== 'custom') {
+                            const numLevels = parseInt(contourLevelsSelect.value, 10);
                             const range = max - min;
                             const step = range / numLevels;
-                            const levels = Array.from(
+                            levels = Array.from(
                                 { length: numLevels },
-                                (_, i) =>
-                                    min + (i + 0.5) * step,
-                            );
-
-                            console.log(
-                                "Downsampled dimensions:",
-                                grid.length,
-                                "×",
-                                grid[0].length,
-                            );
-                            console.log(
-                                "Value range:",
-                                min,
-                                "to",
-                                max,
-                            );
-                            console.log(
-                                "Contour levels:",
-                                levels,
-                            );
-
-                            // Update progress
-                            progressBar.style.width = "30%";
-                            progressBar.textContent =
-                                "30% - Computing segments";
-
-                            // Use setTimeout for next step
-                            setTimeout(() => {
-                                if (processingCancelled) {
-                                    progressContainer.style
-                                        .display = "none";
-                                    document.getElementById(
-                                        "cancelBtn",
-                                    ).style.display = "none";
-                                    document.getElementById(
-                                        "message",
-                                    ).textContent =
-                                        "Processing cancelled";
-                                    return;
-                                }
-
-                                try {
-                                    // Generate isolines using the imported function
-                                    const conrec = new Conrec();
-                                    const segments = conrec
-                                        .computeSegments(
-                                            grid,
-                                            levels,
-                                        );
-
-                                    // Update progress
-                                    progressBar.style.width =
-                                        "60%";
-                                    progressBar.textContent =
-                                        "60% - Building isolines";
-
-                                    // Use setTimeout for next step
-                                    setTimeout(() => {
-                                        if (processingCancelled) {
-                                            progressContainer
-                                                .style.display =
-                                                    "none";
-                                            document
-                                                .getElementById(
-                                                    "cancelBtn",
-                                                ).style
-                                                .display =
-                                                    "none";
-                                            document
-                                                .getElementById(
-                                                    "message",
-                                                ).textContent =
-                                                    "Processing cancelled";
-                                            return;
-                                        }
-
-                                        try {
-                                            // Build isolines from segments
-                                            const builder =
-                                                new IsolineBuilder();
-                                            const isolines =
-                                                builder
-                                                    .buildIsolines(
-                                                        segments,
-                                                        1,
-                                                    );
-
-                                            // Update progress
-                                            progressBar.style
-                                                .width = "80%";
-                                            progressBar
-                                                .textContent =
-                                                    "80% - Creating GeoJSON";
-
-                                            // Use setTimeout for next step
-                                            setTimeout(() => {
-                                                if (processingCancelled) {
-                                                    progressContainer
-                                                        .style
-                                                        .display =
-                                                            "none";
-                                                    document
-                                                        .getElementById(
-                                                            "cancelBtn",
-                                                        ).style
-                                                        .display =
-                                                            "none";
-                                                    document
-                                                        .getElementById(
-                                                            "message",
-                                                        ).textContent =
-                                                            "Processing cancelled";
-                                                    return;
-                                                }
-
-                                                try {
-                                                    // Convert isolines to GeoJSON with proper coordinate transformation
-                                                    const geojson =
-                                                        {
-                                                            type:
-                                                                "FeatureCollection",
-                                                            features:
-                                                                isolines
-                                                                    .map(
-                                                                        (
-                                                                            isoline,
-                                                                        ) => {
-                                                                            // Transform grid coordinates to geographic coordinates
-                                                                            const coordinates =
-                                                                                isoline
-                                                                                    .map(
-                                                                                        (
-                                                                                            point,
-                                                                                        ) => {
-                                                                                            // Scale grid coordinates to a reasonable geographic range
-                                                                                            const lon =
-                                                                                                point
-                                                                                                    .lon /
-                                                                                                1000; // Scale factor for longitude
-                                                                                            const lat =
-                                                                                                point
-                                                                                                    .lat /
-                                                                                                1000; // Scale factor for latitude
-                                                                                            return [
-                                                                                                lon,
-                                                                                                lat,
-                                                                                            ];
-                                                                                        },
-                                                                                    );
-
-                                                                            // Ensure the polygon is closed
-                                                                            if (
-                                                                                coordinates
-                                                                                        .length >
-                                                                                    0 &&
-                                                                                (coordinates[
-                                                                                            0
-                                                                                        ][0] !==
-                                                                                        coordinates[
-                                                                                            coordinates
-                                                                                                .length -
-                                                                                            1
-                                                                                        ][0] ||
-                                                                                    coordinates[
-                                                                                            0
-                                                                                        ][1] !==
-                                                                                        coordinates[
-                                                                                            coordinates
-                                                                                                .length -
-                                                                                            1
-                                                                                        ][1])
-                                                                            ) {
-                                                                                coordinates
-                                                                                    .push(
-                                                                                        [
-                                                                                            ...coordinates[
-                                                                                                0
-                                                                                            ],
-                                                                                        ],
-                                                                                    );
-                                                                            }
-
-                                                                            return {
-                                                                                type:
-                                                                                    "Feature",
-                                                                                properties:
-                                                                                    {
-                                                                                        level:
-                                                                                            isoline
-                                                                                                .level,
-                                                                                    },
-                                                                                geometry:
-                                                                                    {
-                                                                                        type:
-                                                                                            "Polygon",
-                                                                                        coordinates:
-                                                                                            [coordinates],
-                                                                                    },
-                                                                            };
-                                                                        },
-                                                                    ).filter(
-                                                                        (
-                                                                            feature,
-                                                                        ) => feature
-                                                                                    .geometry
-                                                                                    .coordinates[
-                                                                                        0
-                                                                                    ].length >=
-                                                                                4 && // Filter out invalid polygons
-                                                                            feature
-                                                                                .geometry
-                                                                                .coordinates[
-                                                                                    0
-                                                                                ].every(
-                                                                                    (
-                                                                                        coord,
-                                                                                    ) => !isNaN(
-                                                                                        coord[
-                                                                                            0
-                                                                                        ],
-                                                                                    ) &&
-                                                                                        !isNaN(
-                                                                                            coord[
-                                                                                                1
-                                                                                            ],
-                                                                                        ),
-                                                                                ), // Filter out NaN coordinates
-                                                                    ),
-                                                        };
-
-                                                    // Update progress
-                                                    progressBar
-                                                        .style
-                                                        .width =
-                                                            "90%";
-                                                    progressBar
-                                                        .textContent =
-                                                            "90% - Rendering map";
-
-                                                    // Update the legend
-                                                    updateLegend(
-                                                        levels,
-                                                    );
-
-                                                    // Check if we have valid features
-                                                    if (
-                                                        geojson
-                                                            .features
-                                                            .length ===
-                                                            0
-                                                    ) {
-                                                        progressContainer
-                                                            .style
-                                                            .display =
-                                                                "none";
-                                                        document
-                                                            .getElementById(
-                                                                "cancelBtn",
-                                                            ).style
-                                                            .display =
-                                                                "none";
-                                                        throw new Error(
-                                                            "No valid isolines generated from the data",
-                                                        );
-                                                    }
-
-                                                    // Use setTimeout for final rendering
-                                                    setTimeout(
-                                                        () => {
-                                                            if (processingCancelled) {
-                                                                progressContainer
-                                                                    .style
-                                                                    .display =
-                                                                        "none";
-                                                                document
-                                                                    .getElementById(
-                                                                        "cancelBtn",
-                                                                    ).style
-                                                                    .display =
-                                                                        "none";
-                                                                document
-                                                                    .getElementById(
-                                                                        "message",
-                                                                    ).textContent =
-                                                                        "Processing cancelled";
-                                                                return;
-                                                            }
-
-                                                            try {
-                                                                // Add isolines to the map
-                                                                const isoLayer =
-                                                                    L.geoJSON(
-                                                                        geojson,
-                                                                        {
-                                                                            style:
-                                                                                function (
-                                                                                    feature,
-                                                                                ) {
-                                                                                    return {
-                                                                                        color:
-                                                                                            getColor(
-                                                                                                feature
-                                                                                                    .properties
-                                                                                                    .level,
-                                                                                                min,
-                                                                                                max,
-                                                                                            ),
-                                                                                        weight:
-                                                                                            2,
-                                                                                        opacity:
-                                                                                            0.7,
-                                                                                        fillOpacity:
-                                                                                            0.4,
-                                                                                    };
-                                                                                },
-                                                                            onEachFeature:
-                                                                                function (
-                                                                                    feature,
-                                                                                    layer,
-                                                                                ) {
-                                                                                    layer
-                                                                                        .bindPopup(
-                                                                                            `Level: ${
-                                                                                                feature
-                                                                                                    .properties
-                                                                                                    .level
-                                                                                                    .toFixed(
-                                                                                                        2,
-                                                                                                    )
-                                                                                            }`,
-                                                                                        );
-                                                                                },
-                                                                        },
-                                                                    ).addTo(
-                                                                        isolinesLayer,
-                                                                    );
-
-                                                                // Fit map to the isolines bounds - with error handling
-                                                                try {
-                                                                    if (
-                                                                        geojson
-                                                                            .features
-                                                                            .length >
-                                                                            0
-                                                                    ) {
-                                                                        const bounds =
-                                                                            isoLayer
-                                                                                .getBounds();
-                                                                        if (
-                                                                            bounds
-                                                                                .isValid()
-                                                                        ) {
-                                                                            map.fitBounds(
-                                                                                bounds,
-                                                                            );
-                                                                        } else {
-                                                                            console
-                                                                                .warn(
-                                                                                    "Generated bounds are not valid",
-                                                                                );
-                                                                            // Set a default view as fallback
-                                                                            map.setView(
-                                                                                [
-                                                                                    0,
-                                                                                    0,
-                                                                                ],
-                                                                                2,
-                                                                            );
-                                                                        }
-                                                                    }
-                                                                } catch (e) {
-                                                                    console
-                                                                        .error(
-                                                                            "Error setting bounds:",
-                                                                            e,
-                                                                        );
-                                                                    // Set a default view as fallback
-                                                                    map.setView(
-                                                                        [
-                                                                            0,
-                                                                            0,
-                                                                        ],
-                                                                        2,
-                                                                    );
-                                                                }
-
-                                                                // Complete progress
-                                                                progressBar
-                                                                    .style
-                                                                    .width =
-                                                                        "100%";
-                                                                progressBar
-                                                                    .textContent =
-                                                                        "100%";
-
-                                                                // Hide progress and cancel button
-                                                                setTimeout(
-                                                                    () => {
-                                                                        progressContainer
-                                                                            .style
-                                                                            .display =
-                                                                                "none";
-                                                                        document
-                                                                            .getElementById(
-                                                                                "cancelBtn",
-                                                                            ).style
-                                                                            .display =
-                                                                                "none";
-                                                                    },
-                                                                    1000,
-                                                                );
-
-                                                                document
-                                                                    .getElementById(
-                                                                        "message",
-                                                                    ).textContent =
-                                                                        "Isolines generated successfully!";
-                                                            } catch (error) {
-                                                                progressContainer
-                                                                    .style
-                                                                    .display =
-                                                                        "none";
-                                                                document
-                                                                    .getElementById(
-                                                                        "cancelBtn",
-                                                                    ).style
-                                                                    .display =
-                                                                        "none";
-                                                                document
-                                                                    .getElementById(
-                                                                        "error",
-                                                                    ).textContent =
-                                                                        `Error rendering isolines: ${error.message}`;
-                                                                console
-                                                                    .error(
-                                                                        "Error rendering isolines:",
-                                                                        error,
-                                                                    );
-                                                            }
-                                                        },
-                                                        0,
-                                                    );
-                                                } catch (error) {
-                                                    progressContainer
-                                                        .style
-                                                        .display =
-                                                            "none";
-                                                    document
-                                                        .getElementById(
-                                                            "cancelBtn",
-                                                        ).style
-                                                        .display =
-                                                            "none";
-                                                    document
-                                                        .getElementById(
-                                                            "error",
-                                                        ).textContent =
-                                                            `Error creating GeoJSON: ${error.message}`;
-                                                    console
-                                                        .error(
-                                                            "Error creating GeoJSON:",
-                                                            error,
-                                                        );
-                                                }
-                                            }, 0);
-                                        } catch (error) {
-                                            progressContainer
-                                                .style.display =
-                                                    "none";
-                                            document
-                                                .getElementById(
-                                                    "cancelBtn",
-                                                ).style
-                                                .display =
-                                                    "none";
-                                            document
-                                                .getElementById(
-                                                    "error",
-                                                ).textContent =
-                                                    `Error building isolines: ${error.message}`;
-                                            console.error(
-                                                "Error building isolines:",
-                                                error,
-                                            );
-                                        }
-                                    }, 0);
-                                } catch (error) {
-                                    progressContainer.style
-                                        .display = "none";
-                                    document.getElementById(
-                                        "cancelBtn",
-                                    ).style.display = "none";
-                                    document.getElementById(
-                                        "error",
-                                    ).textContent =
-                                        `Error computing segments: ${error.message}`;
-                                    console.error(
-                                        "Error computing segments:",
-                                        error,
-                                    );
-                                }
-                            }, 0);
-                        } catch (error) {
-                            progressContainer.style.display =
-                                "none";
-                            document.getElementById("cancelBtn")
-                                .style.display = "none";
-                            document.getElementById("error")
-                                .textContent =
-                                    `Error preparing data: ${error.message}`;
-                            console.error(
-                                "Error preparing data:",
-                                error,
+                                (_, i) => min + (i + 0.5) * step
                             );
                         }
-                    }, 0);
-                } catch (error) {
-                    progressContainer.style.display = "none";
-                    document.getElementById("cancelBtn").style
-                        .display = "none";
-                    document.getElementById("error")
-                        .textContent =
-                            `Error generating isolines: ${error.message}`;
-                    console.error(
-                        "Error generating isolines:",
-                        error,
-                    );
+
+                        console.log("Downsampled dimensions:", grid.length, "×", grid[0].length);
+                        console.log("Value range:", min, "to", max);
+                        console.log("Contour levels:", levels);
+
+                        // Update progress
+                        progressBar.style.width = "30%";
+                        progressBar.textContent = "30% - Computing isolines";
+
+                        // Log performance
+                        const levelsTime = performance.now();
+                        document.getElementById("performance").textContent +=
+                            `\nLevel calculation: ${(levelsTime - lastStepTime).toFixed(2)}ms`;
+                        lastStepTime = levelsTime;
+
+                        // Use setTimeout for next step
+                        setTimeout(() => {
+                            if (processingCancelled) {
+                                progressContainer.style.display = "none";
+                                document.getElementById("cancelBtn").style.display = "none";
+                                document.getElementById("message").textContent = "Processing cancelled";
+                                return;
+                            }
+
+                            try {
+                                // Check if we should use tiled processing
+                                const useTiledProcessing = document.getElementById("useTiledProcessing").checked;
+                                const tileSize = parseInt(document.getElementById("tileSize").value, 10);
+
+                                let geojson;
+
+                                if (useTiledProcessing) {
+                                    // Use tiled processing
+                                    console.log("Using tiled processing with tile size:", tileSize);
+
+                                    // Convert 2D grid to 1D array for tiled processing
+                                    const values = [];
+                                    for (let i = 0; i < grid.length; i++) {
+                                        for (let j = 0; j < grid[0].length; j++) {
+                                            values.push(grid[i][j]);
+                                        }
+                                    }
+
+                                    // Generate isolines using tiled processing
+                                    geojson = generateIsolinesFromValues(values, {
+                                        width: grid[0].length,
+                                        height: grid.length,
+                                        levels: levels,
+                                        tileSize: tileSize,
+                                        forceTiled: true
+                                    });
+                                } else {
+                                    // Use standard processing
+                                    // Generate isolines using the imported function
+                                    geojson = generateIsolines(grid, levels);
+                                }
+
+                                // Log performance
+                                const isolinesTime = performance.now();
+                                document.getElementById("performance").textContent +=
+                                    `\nIsoline generation: ${(isolinesTime - lastStepTime).toFixed(2)}ms`;
+                                lastStepTime = isolinesTime;
+
+                                // Update progress
+                                progressBar.style.width = "80%";
+                                progressBar.textContent = "80% - Rendering map";
+
+                                // Update the legend
+                                updateLegend(levels);
+
+                                // Check if we have valid features
+                                if (geojson.features.length === 0) {
+                                    progressContainer.style.display = "none";
+                                    document.getElementById("cancelBtn").style.display = "none";
+                                    throw new Error("No valid isolines generated from the data");
+                                }
+
+                                // Use setTimeout for final rendering
+                                setTimeout(() => {
+                                    if (processingCancelled) {
+                                        progressContainer.style.display = "none";
+                                        document.getElementById("cancelBtn").style.display = "none";
+                                        document.getElementById("message").textContent = "Processing cancelled";
+                                        return;
+                                    }
+
+                                    try {
+                                        // Add isolines to the map
+                                        const isoLayer = L.geoJSON(geojson, {
+                                            style: function (feature) {
+                                                return {
+                                                    color: getColor(
+                                                        feature.properties.level,
+                                                        min,
+                                                        max
+                                                    ),
+                                                    weight: 2,
+                                                    opacity: 0.7,
+                                                    fillOpacity: 0.4,
+                                                };
+                                            },
+                                            onEachFeature: function (feature, layer) {
+                                                layer.bindPopup(
+                                                    `Level: ${feature.properties.level.toFixed(2)}`
+                                                );
+                                            },
+                                        }).addTo(isolinesLayer);
+
+                                        // Fit map to the isolines bounds - with error handling
+                                        try {
+                                            if (geojson.features.length > 0) {
+                                                const bounds = isoLayer.getBounds();
+                                                if (bounds.isValid()) {
+                                                    map.fitBounds(bounds);
+                                                } else {
+                                                    console.warn("Generated bounds are not valid");
+                                                    // Set a default view as fallback
+                                                    map.setView([0, 0], 2);
+                                                }
+                                            }
+                                        } catch (e) {
+                                            console.error("Error setting bounds:", e);
+                                            // Set a default view as fallback
+                                            map.setView([0, 0], 2);
+                                        }
+
+                                        // Complete progress
+                                        progressBar.style.width = "100%";
+                                        progressBar.textContent = "100%";
+
+                                        // Log performance
+                                        const renderTime = performance.now();
+                                        document.getElementById("performance").textContent +=
+                                            `\nRendering: ${(renderTime - lastStepTime).toFixed(2)}ms` +
+                                            `\nTotal time: ${(renderTime - startTime).toFixed(2)}ms`;
+
+                                        // Hide progress and cancel button
+                                        setTimeout(() => {
+                                            progressContainer.style.display = "none";
+                                            document.getElementById("cancelBtn").style.display = "none";
+                                        }, 1000);
+
+                                        document.getElementById("message").textContent =
+                                            `Isolines generated successfully! (${geojson.features.length} features)`;
+                                    } catch (error) {
+                                        progressContainer.style.display = "none";
+                                        document.getElementById("cancelBtn").style.display = "none";
+                                        document.getElementById("error").textContent =
+                                            `Error rendering isolines: ${error.message}`;
+                                        console.error("Error rendering isolines:", error);
+                                    }
+                                }, 0);
+                            } catch (error) {
+                                progressContainer.style.display = "none";
+                                document.getElementById("cancelBtn").style.display = "none";
+                                document.getElementById("error").textContent =
+                                    `Error generating isolines: ${error.message}`;
+                                console.error("Error generating isolines:", error);
+                            }
+                        }, 0);
+                    } catch (error) {
+                        progressContainer.style.display = "none";
+                        document.getElementById("cancelBtn").style.display = "none";
+                        document.getElementById("error").textContent =
+                            `Error preparing data: ${error.message}`;
+                        console.error("Error preparing data:", error);
+                    }
+                }, 0);
+            } catch (error) {
+                progressContainer.style.display = "none";
+                document.getElementById("cancelBtn").style.display = "none";
+                document.getElementById("error").textContent =
+                    `Error generating isolines: ${error.message}`;
+                console.error("Error generating isolines:", error);
+            }
+        }
+
+        // Import CSV file
+        function importCSVFile() {
+            const fileInput = document.getElementById("csvFile");
+            const file = fileInput.files[0];
+
+            if (!file) {
+                document.getElementById("error").textContent = "Please select a CSV file";
+                return;
+            }
+
+            // Parse the CSV file
+            parseCSVData(file);
+        }
+
+        // Load sample data (non-geographic)
+        function loadSampleData() {
+            const sampleCSV = `value
+10,20,30,40,50
+15,25,35,45,55
+20,30,40,50,60
+25,35,45,55,65
+30,40,50,60,70`;
+
+            document.getElementById("csvData").value = sampleCSV;
+            document.getElementById("message").textContent = "Sample data loaded!";
+            isGeographicData = false;
+
+            // Parse the sample data
+            const blob = new Blob([sampleCSV], { type: "text/csv" });
+            const file = new File([blob], "sample.csv", { type: "text/csv" });
+            parseCSVData(file);
+        }
+
+        // Load geographic sample data
+        function loadGeoSampleData() {
+            // Create a simple geographic grid (lat/lon)
+            let sampleCSV = "lat,lon,value\n";
+
+            // Generate a 10x20 grid from -90 to 90 lat, -180 to 180 lon
+            for (let lat = -90; lat <= 90; lat += 18) {
+                for (let lon = -180; lon <= 180; lon += 18) {
+                    // Create a simple pattern (peaks at certain locations)
+                    const value = 50 +
+                        40 * Math.sin((lat / 90) * Math.PI) * Math.cos((lon / 180) * Math.PI);
+                    sampleCSV += `${lat},${lon},${value.toFixed(1)}\n`;
                 }
             }
 
-            // Import CSV file
-            function importCSVFile() {
-                const fileInput = document.getElementById(
-                    "csvFile",
-                );
-                const file = fileInput.files[0];
+            document.getElementById("csvData").value = sampleCSV.split('\n').slice(0, 6).join('\n') + '\n...';
+            document.getElementById("message").textContent = "Geographic sample data loaded!";
+            isGeographicData = true;
 
-                if (!file) {
-                    document.getElementById("error")
-                        .textContent =
-                            "Please select a CSV file";
-                    return;
-                }
+            // Parse the sample data
+            const blob = new Blob([sampleCSV], { type: "text/csv" });
+            const file = new File([blob], "geo_sample.csv", { type: "text/csv" });
+            parseCSVData(file);
+        }
 
-                // Parse the CSV file
-                parseCSVData(file);
-            }
+        // Cancel processing
+        function cancelProcessing() {
+            processingCancelled = true;
+            document.getElementById("message").textContent = "Cancelling processing...";
+        }
 
-            // Load sample data
-            function loadSampleData() {
-                const sampleCSV = `lat,lon,value
-0,0,10
-0,1,20
-0,2,30
-1,0,40
-1,1,50
-1,2,60
-2,0,70
-2,1,80
-2,2,90`;
+        // Event listeners
+        document.getElementById("importBtn").addEventListener("click", importCSVFile);
+        document.getElementById("generateBtn").addEventListener("click", generateIsolinesForLargeData);
+        document.getElementById("sampleDataBtn").addEventListener("click", loadSampleData);
+        document.getElementById("sampleGeoDataBtn").addEventListener("click", loadGeoSampleData);
+        document.getElementById("cancelBtn").addEventListener("click", cancelProcessing);
 
-                document.getElementById("csvData").value =
-                    sampleCSV;
-                document.getElementById("message").textContent =
-                    "Sample data loaded!";
+        // Load sample data on page load
+        loadSampleData();
+    </script>
+</body>
 
-                // Parse the sample data
-                const blob = new Blob([sampleCSV], {
-                    type: "text/csv",
-                });
-                const file = new File([blob], "sample.csv", {
-                    type: "text/csv",
-                });
-                parseCSVData(file);
-            }
-
-            // Cancel processing
-            function cancelProcessing() {
-                processingCancelled = true;
-                document.getElementById("message").textContent =
-                    "Cancelling processing...";
-            }
-
-            // Event listeners
-            document.getElementById("importBtn")
-                .addEventListener("click", importCSVFile);
-            document.getElementById("generateBtn")
-                .addEventListener(
-                    "click",
-                    generateIsolinesForLargeData,
-                );
-            document.getElementById("sampleDataBtn")
-                .addEventListener("click", loadSampleData);
-            document.getElementById("cancelBtn")
-                .addEventListener("click", cancelProcessing);
-
-            // Load sample data on page load
-            loadSampleData();
-        </script>
-    </body>
-</html>
+</html>generateIsolines
