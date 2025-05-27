@@ -1,8 +1,41 @@
 {
   "name": "isoline",
   "version": "1.0.0",
+  "description": "JavaScript tool for efficient construction and visualization of isolines",
   "dependencies": {
     "papaparse": "^5.5.2",
     "rbush": "^4.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:all": "jest",
+    "test:conrec": "jest src/test/unit/conrec.test.js",
+    "test:conrec:watch": "jest src/test/unit/conrec.test.js --watch",
+    "test:index": "jest src/test/unit/index.test.js",
+    "test:index:watch": "jest src/test/unit/index.test.js --watch",
+    "test:spatial": "jest src/test/unit/spatialIndex.test.js",
+    "test:spatial:watch": "jest src/test/unit/spatialIndex.test.js --watch",
+    "test:builder": "jest src/test/unit/isolineBuilder.test.js",
+    "test:builder:watch": "jest src/test/unit/isolineBuilder.test.js --watch",
+    "test:tiled": "jest src/test/unit/tiledIsolineBuilder.test.js",
+    "test:tiled:watch": "jest src/test/unit/tiledIsolineBuilder.test.js --watch",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:verbose": "jest --verbose",
+    "test:debug": "jest --verbose --no-cache"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/visualize/**",
+      "!src/test/unit/*"
+    ],
+    "testMatch": [
+      "**/src/test/unit/*.test.js"
+    ]
   }
 }
