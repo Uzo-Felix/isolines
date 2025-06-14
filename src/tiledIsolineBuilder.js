@@ -57,36 +57,29 @@ class TiledIsolineBuilder {
         return this.getIsolinesAsGeoJSON();
     }
 
-    /**
-     * Process a single tile to generate isolines
-     * @private
-     */
-    processTile(i, j, tileData) {
-        const tileIsolines = new Map();
+    processTile(i, j, enhancedTileData) {
+        const tileLineStrings = new Map();
 
         for (const level of this.levels) {
-            const segments = this.conrec.computeSegments(tileData, [level]);
-
-            const isolines = this.builder.buildIsolines(segments, 1);
-
-            const transformedIsolines = isolines.map(isoline => {
-                const transformedPoints = isoline.map(point => ({
+            const segments = this.conrec.computeSegments(enhancedTileData, [level]);
+            
+            // Generate LineStrings (not closed polygons) - KEY CHANGE
+            const lineStrings = this.builder.buildLineStrings(segments, 1);
+            
+            const transformedLineStrings = lineStrings.map(lineString => {
+                const transformedPoints = lineString.map(point => ({
                     lat: point.lat + (i * this.tileSize),
                     lon: point.lon + (j * this.tileSize),
-                    level: isoline.level
+                    level: lineString.level
                 }));
-
-                transformedPoints.level = isoline.level;
-
+                transformedPoints.level = lineString.level;
                 return transformedPoints;
             });
 
-            tileIsolines.set(level, transformedIsolines);
-
-            this.extractEdgePoints(i, j, transformedIsolines, level);
+            tileLineStrings.set(level, transformedLineStrings);
         }
 
-        return tileIsolines;
+        return tileLineStrings;
     }
 
     /**
@@ -490,4 +483,3 @@ class TiledIsolineBuilder {
 }
 
 module.exports = TiledIsolineBuilder;
-
