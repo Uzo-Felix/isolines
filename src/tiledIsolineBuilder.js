@@ -82,6 +82,17 @@ class TiledIsolineBuilder {
         return tileLineStrings;
     }
 
+    storeEdgeStrips(i, j, tileData) {
+        const tileKey = `${i},${j}`;
+        const strips = {
+            top: tileData.slice(0, 2),    
+            bottom: tileData.slice(-2),  
+            left: tileData.map(row => row.slice(0, 2)), 
+            right: tileData.map(row => row.slice(-2)) 
+        };
+        this.edgeStrips.set(tileKey, strips);
+    }
+
     /**
      * Extract edge points from isolines for merging
      * @private
