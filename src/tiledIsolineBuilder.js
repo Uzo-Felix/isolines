@@ -491,6 +491,63 @@ class TiledIsolineBuilder {
 
         return result;
     }
+
+    lineStringsOverlap(lineString1, lineString2) {
+        const buffer = 0.01; 
+        
+        // Check endpoint proximity
+        const endpoints1 = [lineString1[0], lineString1[lineString1.length - 1]];
+        const endpoints2 = [lineString2[0], lineString2[lineString2.length - 1]];
+        
+        for (const ep1 of endpoints1) {
+            for (const ep2 of endpoints2) {
+                const distance = Math.sqrt(
+                    Math.pow(ep1.lat - ep2.lat, 2) + 
+                    Math.pow(ep1.lon - ep2.lon, 2)
+                );
+                if (distance < buffer) {
+                    return true;
+                }
+            }
+        }
+        
+        // Check if any segments of the LineStrings intersect
+        return this.lineStringsIntersect(lineString1, lineString2);
+    }
+
+    /**
+     * Check if LineStrings have intersecting segments
+     */
+    lineStringsIntersect(ls1, ls2) {
+        for (let i = 0; i < ls1.length - 1; i++) {
+            for (let j = 0; j < ls2.length - 1; j++) {
+                if (this.segmentsIntersect(
+                    ls1[i], ls1[i + 1],
+                    ls2[j], ls2[j + 1]
+                )) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if two line segments intersect
+     */
+    segmentsIntersect(p1, p2, p3, p4) {
+        const denominator = (p4.lon - p3.lon) * (p2.lat - p1.lat) - 
+                           (p4.lat - p3.lat) * (p2.lon - p1.lon);
+        
+        if (Math.abs(denominator) < this.EPSILON) return false;
+        
+        const ua = ((p4.lat - p3.lat) * (p1.lon - p3.lon) - 
+                    (p4.lon - p3.lon) * (p1.lat - p3.lat)) / denominator;
+        const ub = ((p2.lat - p1.lat) * (p1.lon - p3.lon) - 
+                    (p2.lon - p1.lon) * (p1.lat - p3.lat)) / denominator;
+        
+        return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
+    }
 }
 
 module.exports = TiledIsolineBuilder;
