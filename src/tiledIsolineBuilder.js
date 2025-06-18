@@ -8,7 +8,7 @@ const Conrec = require('./conrec');
 const SpatialIndex = require('./spatialIndex');
 
 class TiledIsolineBuilder {
-    constructor(levels = [], tileSize = 128) {
+    constructor(levels = [], tileSize = 128, options = {}) {
         this.levels = levels;
         this.tileSize = tileSize;
         this.tiles = new Map(); 
@@ -17,8 +17,18 @@ class TiledIsolineBuilder {
         this.mergedLineStrings = new Map();
         this.conrec = new Conrec();
         this.builder = new IsolineBuilder();
-        this.EPSILON = 0.000001;
-        this.STRIP_WIDTH = 2;
+        this.EPSILON = options.epsilon || 0.000001;
+        this.STRIP_WIDTH = options.stripWidth || 2;
+        this.BOUNDARY_TOLERANCE = options.boundaryTolerance || Math.max(this.STRIP_WIDTH, this.EPSILON * 100);
+        this.debug = options.debug || false;
+        
+        // Statistics for debugging
+        this.stats = {
+            tilesProcessed: 0,
+            mergeAttempts: 0,
+            successfulMerges: 0,
+            boundaryConnections: 0
+        };
     }
 
     /**
@@ -29,6 +39,10 @@ class TiledIsolineBuilder {
      * @returns {Object} - Updated isolines as GeoJSON
      */
     addTile(i, j, tileData) {
+        if (this.debug) {
+            console.log(`\n=== Processing tile (${i},${j}) ===`);
+        }
+
         if (!tileData || tileData.length === 0) {
             throw new Error('Empty tile data');
         }
@@ -42,6 +56,7 @@ class TiledIsolineBuilder {
             console.warn(`Tile (${i},${j}) exceeds expected dimensions: ${tileData.length}x${expectedWidth}`);
         }
 
+        // Clean NaN values
         if (tileData.some(row => row.some(val => isNaN(val)))) {
             console.warn(`Tile (${i},${j}) contains NaN values which will be treated as 0`);
             tileData = tileData.map(row => row.map(val => isNaN(val) ? 0 : val));
@@ -50,66 +65,113 @@ class TiledIsolineBuilder {
         const tileKey = `${i},${j}`;
         this.tiles.set(tileKey, tileData);
 
-        // Process tile to generate LineStrings
-        const tileLineStrings = this.processTile(i, j, tileData);
+        // Process tile to generate LineStrings with improved coordinate handling
+        const tileLineStrings = this.processTileWithSnapping(i, j, tileData);
         this.tileLineStrings.set(tileKey, tileLineStrings);
 
-        // Extract and store boundary strips
-        this.extractBoundaryStrips(i, j, tileLineStrings);
+        // Extract and store boundary strips with better detection
+        this.extractBoundaryStripsRobust(i, j, tileLineStrings);
 
-        // Merge with neighboring tiles using overlaps detection
-        this.mergeWithNeighborsUsingOverlaps(i, j);
+        // Merge with neighboring tiles using improved logic
+        this.mergeWithNeighborsImproved(i, j);
+
+        this.stats.tilesProcessed++;
+
+        if (this.debug) {
+            this.debugTileProcessing(i, j, tileLineStrings);
+        }
 
         return this.getIsolinesAsGeoJSON();
     }
 
     /**
-     * Process a single tile to generate LineStrings (not Polygons)
+     * Process a single tile with coordinate snapping for boundary consistency
      * @private
      */
-    processTile(i, j, tileData) {
+    processTileWithSnapping(i, j, tileData) {
         const tileLineStrings = new Map();
+
+        if (this.debug) {
+            console.log(`Processing tile (${i},${j}) with ${tileData.length}x${tileData[0].length} data`);
+        }
 
         for (const level of this.levels) {
             const segments = this.conrec.computeSegments(tileData, [level]);
+
+            if (this.debug) {
+                console.log(`Level ${level}: Generated ${segments.length} segments`);
+            }
 
             // Use buildLineStrings instead of buildIsolines to get open LineStrings
             const lineStrings = this.builder.buildLineStrings(segments, 1);
 
             const transformedLineStrings = lineStrings.map(lineString => {
-                const transformedPoints = lineString.map(point => ({
-                    lat: point.lat + (i * this.tileSize),
-                    lon: point.lon + (j * this.tileSize),
-                    level: lineString.level
-                }));
+                // Transform coordinates with boundary snapping
+                const transformedPoints = lineString.map(point => {
+                    let lat = point.lat + (i * this.tileSize);
+                    let lon = point.lon + (j * this.tileSize);
+                    
+                    // Snap to tile boundaries if very close (FIXED COORDINATE ALIGNMENT)
+                    const tileStartLat = i * this.tileSize;
+                    const tileEndLat = (i + 1) * this.tileSize;
+                    const tileStartLon = j * this.tileSize;
+                    const tileEndLon = (j + 1) * this.tileSize;
+                    
+                    if (Math.abs(lat - tileStartLat) < this.EPSILON) lat = tileStartLat;
+                    if (Math.abs(lat - tileEndLat) < this.EPSILON) lat = tileEndLat;
+                    if (Math.abs(lon - tileStartLon) < this.EPSILON) lon = tileStartLon;
+                    if (Math.abs(lon - tileEndLon) < this.EPSILON) lon = tileEndLon;
+                    
+                    return {
+                        lat: lat,
+                        lon: lon,
+                        level: lineString.level
+                    };
+                });
 
                 transformedPoints.level = lineString.level;
                 transformedPoints.isClosed = this.isLineStringClosed(transformedPoints);
+                transformedPoints.tileOrigin = { i, j };
 
                 return transformedPoints;
             });
 
             tileLineStrings.set(level, transformedLineStrings);
+
+            if (this.debug) {
+                console.log(`Level ${level}: Created ${transformedLineStrings.length} linestrings`);
+                transformedLineStrings.forEach((ls, idx) => {
+                    console.log(`  LineString ${idx}: ${ls.length} points, closed: ${ls.isClosed}`);
+                });
+            }
         }
 
         return tileLineStrings;
     }
 
     /**
-     * Extract boundary strips from tile LineStrings
+     * Extract boundary strips with robust detection
      * @private
      */
-    extractBoundaryStrips(i, j, tileLineStrings) {
+    extractBoundaryStripsRobust(i, j, tileLineStrings) {
         const tileKey = `${i},${j}`;
+        
+        if (this.debug) {
+            console.log(`Extracting boundary strips for tile (${i},${j})`);
+        }
         
         for (const [level, lineStrings] of tileLineStrings.entries()) {
             const strips = this.getStripsForLevel(level);
             
             for (const lineString of lineStrings) {
-                // Check if LineString intersects tile boundaries
-                const boundaryIntersections = this.getBoundaryIntersections(i, j, lineString);
+                // Check if LineString intersects tile boundaries with improved detection
+                const boundaryIntersections = this.getBoundaryIntersectionsRobust(i, j, lineString);
                 
                 if (boundaryIntersections.length > 0) {
+                    if (this.debug) {
+                        console.log(`LineString crosses boundaries: ${boundaryIntersections.join(', ')}`);
+                    }
+                    
                     // Store strips for each boundary this LineString crosses
                     for (const boundary of boundaryIntersections) {
                         const stripKey = this.getStripKey(i, j, boundary);
@@ -121,12 +183,60 @@ class TiledIsolineBuilder {
                         strips.get(stripKey).push({
                             lineString: lineString,
                             tileKey: tileKey,
-                            boundary: boundary
+                            boundary: boundary,
+                            endpoints: this.getLineStringEndpoints(lineString)
                         });
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Get boundary intersections with robust tolerance
+     * @private
+     */
+    getBoundaryIntersectionsRobust(i, j, lineString) {
+        const boundaries = [];
+        const tileStartLat = i * this.tileSize;
+        const tileEndLat = (i + 1) * this.tileSize;
+        const tileStartLon = j * this.tileSize;
+        const tileEndLon = (j + 1) * this.tileSize;
+
+        // Use configurable tolerance for boundary detection (FIXED BOUNDARY DETECTION)
+        const tolerance = this.BOUNDARY_TOLERANCE;
+
+        for (const point of lineString) {
+            // Check if point is near tile boundaries with proper tolerance
+            if (Math.abs(point.lat - tileStartLat) <= tolerance) {
+                if (!boundaries.includes('top')) boundaries.push('top');
+            }
+            if (Math.abs(point.lat - tileEndLat) <= tolerance) {
+                if (!boundaries.includes('bottom')) boundaries.push('bottom');
+            }
+            if (Math.abs(point.lon - tileStartLon) <= tolerance) {
+                if (!boundaries.includes('left')) boundaries.push('left');
+            }
+            if (Math.abs(point.lon - tileEndLon) <= tolerance) {
+                if (!boundaries.includes('right')) boundaries.push('right');
+            }
+        }
+
+        return boundaries;
+    }
+
+    /**
+     * Get line string endpoints for connection analysis
+     * @private
+     */
+    getLineStringEndpoints(lineString) {
+        if (lineString.length < 2) return [];
+        
+        return {
+            start: lineString[0],
+            end: lineString[lineString.length - 1],
+            isClosed: this.isLineStringClosed(lineString)
+        };
     }
 
     /**
@@ -138,36 +248,6 @@ class TiledIsolineBuilder {
             this.boundaryStrips.set(level, new Map());
         }
         return this.boundaryStrips.get(level);
-    }
-
-    /**
-     * Get boundary intersections for a LineString
-     * @private
-     */
-    getBoundaryIntersections(i, j, lineString) {
-        const boundaries = [];
-        const tileStartLat = i * this.tileSize;
-        const tileEndLat = (i + 1) * this.tileSize;
-        const tileStartLon = j * this.tileSize;
-        const tileEndLon = (j + 1) * this.tileSize;
-
-        for (const point of lineString) {
-            // Check if point is near tile boundaries
-            if (Math.abs(point.lat - tileStartLat) < this.STRIP_WIDTH) {
-                if (!boundaries.includes('top')) boundaries.push('top');
-            }
-            if (Math.abs(point.lat - tileEndLat) < this.STRIP_WIDTH) {
-                if (!boundaries.includes('bottom')) boundaries.push('bottom');
-            }
-            if (Math.abs(point.lon - tileStartLon) < this.STRIP_WIDTH) {
-                if (!boundaries.includes('left')) boundaries.push('left');
-            }
-            if (Math.abs(point.lon - tileEndLon) < this.STRIP_WIDTH) {
-                if (!boundaries.includes('right')) boundaries.push('right');
-            }
-        }
-
-        return boundaries;
     }
 
     /**
@@ -185,50 +265,76 @@ class TiledIsolineBuilder {
     }
 
     /**
-     * Merge with neighboring tiles using overlaps detection
+     * Merge with neighboring tiles using improved logic
      * @private
      */
-    mergeWithNeighborsUsingOverlaps(i, j) {
+    mergeWithNeighborsImproved(i, j) {
         const neighbors = [
-            { i: i - 1, j: j, boundary: "top" },
-            { i: i + 1, j: j, boundary: "bottom" },
-            { i: i, j: j - 1, boundary: "left" },
-            { i: i, j: j + 1, boundary: "right" }
+            { i: i - 1, j: j, boundary: "top", opposite: "bottom" },
+            { i: i + 1, j: j, boundary: "bottom", opposite: "top" },
+            { i: i, j: j - 1, boundary: "left", opposite: "right" },
+            { i: i, j: j + 1, boundary: "right", opposite: "left" }
         ];
+
+        if (this.debug) {
+            console.log(`Checking neighbors for tile (${i},${j})`);
+        }
 
         for (const neighbor of neighbors) {
             const neighborKey = `${neighbor.i},${neighbor.j}`;
-            if (!this.tiles.has(neighborKey)) continue;
+            if (!this.tiles.has(neighborKey)) {
+                if (this.debug) {
+                    console.log(`  Neighbor (${neighbor.i},${neighbor.j}) not available`);
+                }
+                continue;
+            }
+
+            if (this.debug) {
+                console.log(`  Merging with neighbor (${neighbor.i},${neighbor.j}) via ${neighbor.boundary}`);
+            }
 
             for (const level of this.levels) {
-                this.mergeLineStringsAtLevel(i, j, neighbor.i, neighbor.j, level, neighbor.boundary);
+                this.mergeLineStringsAtLevelImproved(i, j, neighbor.i, neighbor.j, level, neighbor.boundary, neighbor.opposite);
             }
         }
     }
 
     /**
-     * Merge LineStrings at a specific level between two tiles
+     * Merge LineStrings at a specific level with improved logic
      * @private
      */
-    mergeLineStringsAtLevel(i1, j1, i2, j2, level, boundary) {
+    mergeLineStringsAtLevelImproved(i1, j1, i2, j2, level, boundary1, boundary2) {
         if (!this.boundaryStrips.has(level)) return;
 
         const strips = this.boundaryStrips.get(level);
-        const stripKey1 = this.getStripKey(i1, j1, boundary);
-        const stripKey2 = this.getStripKey(i2, j2, this.getOppositeBoundary(boundary));
+        const stripKey1 = this.getStripKey(i1, j1, boundary1);
+        const stripKey2 = this.getStripKey(i2, j2, boundary2);
 
         const strips1 = strips.get(stripKey1) || [];
         const strips2 = strips.get(stripKey2) || [];
 
         if (strips1.length === 0 || strips2.length === 0) return;
 
-        // Find overlapping LineStrings using OVERLAPS predicate
+        this.stats.mergeAttempts++;
+
+        if (this.debug) {
+            console.log(`    Attempting merge at level ${level}: ${strips1.length} vs ${strips2.length} strips`);
+        }
+
+        // Find connections using improved detection
         for (const strip1 of strips1) {
             for (const strip2 of strips2) {
-                if (this.lineStringsOverlap(strip1.lineString, strip2.lineString)) {
-                    const mergedLineString = this.mergeOverlappingLineStrings(
+                const connection = this.findBestConnection(strip1.lineString, strip2.lineString);
+                
+                if (connection) {
+                    if (this.debug) {
+                        console.log(`      Found connection: distance=${connection.distance.toFixed(6)}`);
+                    }
+
+                    const mergedLineString = this.mergeAtConnectionImproved(
                         strip1.lineString, 
-                        strip2.lineString
+                        strip2.lineString, 
+                        connection
                     );
 
                     if (mergedLineString) {
@@ -245,11 +351,17 @@ class TiledIsolineBuilder {
                         
                         if (index1 >= 0) mergedList.splice(index1, 1);
                         if (index2 >= 0) mergedList.splice(index2, 1);
-
                         mergedList.push(mergedLineString);
 
                         // Update boundary strips
-                        this.updateBoundaryStrips(level, strip1, strip2, mergedLineString);
+                        this.updateBoundaryStripsImproved(level, strip1, strip2, mergedLineString);
+
+                        this.stats.successfulMerges++;
+                        this.stats.boundaryConnections++;
+
+                        if (this.debug) {
+                            console.log(`      Merge successful: ${mergedLineString.length} points`);
+                        }
                     }
                 }
             }
@@ -257,128 +369,10 @@ class TiledIsolineBuilder {
     }
 
     /**
-     * Get opposite boundary name
+     * Find best connection between two LineStrings with improved logic
      * @private
      */
-    getOppositeBoundary(boundary) {
-        const opposites = {
-            'top': 'bottom',
-            'bottom': 'top',
-            'left': 'right',
-            'right': 'left'
-        };
-        return opposites[boundary] || boundary;
-    }
-
-    /**
-     * Check if two LineStrings overlap using OVERLAPS predicate
-     * @private
-     */
-    lineStringsOverlap(lineString1, lineString2) {
-        // Simple overlap detection: check if any segment from one LineString
-        // intersects with any segment from the other LineString
-        
-        for (let i = 0; i < lineString1.length - 1; i++) {
-            const seg1 = {
-                p1: lineString1[i],
-                p2: lineString1[i + 1]
-            };
-
-            for (let j = 0; j < lineString2.length - 1; j++) {
-                const seg2 = {
-                    p1: lineString2[j],
-                    p2: lineString2[j + 1]
-                };
-
-                if (this.segmentsIntersect(seg1, seg2)) {
-                    return true;
-                }
-            }
-        }
-
-        // Also check for endpoint proximity (for near-overlaps)
-        for (const point1 of [lineString1[0], lineString1[lineString1.length - 1]]) {
-            for (const point2 of [lineString2[0], lineString2[lineString2.length - 1]]) {
-                if (this.distance(point1, point2) < this.EPSILON * 10) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if two line segments intersect
-     * @private
-     */
-    segmentsIntersect(seg1, seg2) {
-        const { p1: p1, p2: p2 } = seg1;
-        const { p1: p3, p2: p4 } = seg2;
-
-        // Calculate the direction of the four points
-        const d1 = this.crossProduct(p4, p1, p2);
-        const d2 = this.crossProduct(p4, p2, p3);
-        const d3 = this.crossProduct(p2, p3, p4);
-        const d4 = this.crossProduct(p2, p4, p1);
-
-        // Check if segments intersect
-        if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
-            ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
-            return true;
-        }
-
-        // Check for collinear segments
-        if (Math.abs(d1) < this.EPSILON && this.onSegment(p1, p4, p2)) return true;
-        if (Math.abs(d2) < this.EPSILON && this.onSegment(p2, p4, p3)) return true;
-        if (Math.abs(d3) < this.EPSILON && this.onSegment(p3, p2, p4)) return true;
-        if (Math.abs(d4) < this.EPSILON && this.onSegment(p4, p2, p1)) return true;
-
-        return false;
-    }
-
-    /**
-     * Calculate cross product for three points
-     * @private
-     */
-    crossProduct(p1, p2, p3) {
-        return (p2.lat - p1.lat) * (p3.lon - p1.lon) - (p2.lon - p1.lon) * (p3.lat - p1.lat);
-    }
-
-    /**
-     * Check if point q lies on line segment pr
-     * @private
-     */
-    onSegment(p, q, r) {
-        return q.lon <= Math.max(p.lon, r.lon) &&
-               q.lon >= Math.min(p.lon, r.lon) &&
-               q.lat <= Math.max(p.lat, r.lat) &&
-               q.lat >= Math.min(p.lat, r.lat);
-    }
-
-    /**
-     * Merge two overlapping LineStrings into a single LineString
-     * @private
-     */
-    mergeOverlappingLineStrings(lineString1, lineString2) {
-        // Find the best connection points between the two LineStrings
-        const connections = this.findConnectionPoints(lineString1, lineString2);
-        
-        if (connections.length === 0) {
-            // If no clear connection, try simple concatenation
-            return this.concatenateLineStrings(lineString1, lineString2);
-        }
-
-        // Use the best connection to merge the LineStrings
-        const bestConnection = connections[0];
-        return this.mergeAtConnection(lineString1, lineString2, bestConnection);
-    }
-
-    /**
-     * Find potential connection points between two LineStrings
-     * @private
-     */
-    findConnectionPoints(lineString1, lineString2) {
+    findBestConnection(lineString1, lineString2) {
         const connections = [];
         const endpoints1 = [
             { point: lineString1[0], index: 0, isStart: true },
@@ -389,15 +383,19 @@ class TiledIsolineBuilder {
             { point: lineString2[lineString2.length - 1], index: lineString2.length - 1, isStart: false }
         ];
 
-        // Check all endpoint combinations
+        // Check all endpoint combinations with improved tolerance
         for (const ep1 of endpoints1) {
             for (const ep2 of endpoints2) {
                 const distance = this.distance(ep1.point, ep2.point);
-                if (distance < this.EPSILON * 10) {
+                
+                // Use more generous connection tolerance
+                const connectionTolerance = Math.max(this.EPSILON * 50, this.BOUNDARY_TOLERANCE);
+                
+                if (distance < connectionTolerance) {
                     connections.push({
-                        lineString1, lineString2,
                         ep1, ep2, distance,
-                        type: 'endpoint'
+                        type: 'endpoint',
+                        connectionType: `${ep1.isStart ? 'start' : 'end'}_to_${ep2.isStart ? 'start' : 'end'}`
                     });
                 }
             }
@@ -405,79 +403,91 @@ class TiledIsolineBuilder {
 
         // Sort by distance (closest first)
         connections.sort((a, b) => a.distance - b.distance);
-        return connections;
+        
+        return connections.length > 0 ? connections[0] : null;
     }
 
     /**
-     * Simple concatenation of two LineStrings
+     * Merge LineStrings at connection with improved logic and debugging
      * @private
      */
-    concatenateLineStrings(lineString1, lineString2) {
-        // Try different concatenation orders and pick the best one
-        const options = [
-            [...lineString1, ...lineString2],
-            [...lineString1, ...lineString2.slice().reverse()],
-            [...lineString2, ...lineString1],
-            [...lineString2, ...lineString1.slice().reverse()]
-        ];
-
-        // Pick the option with the smallest gap at the connection point
-        let bestOption = options[0];
-        let smallestGap = Infinity;
-
-        for (const option of options) {
-            const midIndex = lineString1.length - 1;
-            if (midIndex >= 0 && midIndex + 1 < option.length) {
-                const gap = this.distance(option[midIndex], option[midIndex + 1]);
-                if (gap < smallestGap) {
-                    smallestGap = gap;
-                    bestOption = option;
-                }
-            }
-        }
-
-        bestOption.level = lineString1.level;
-        bestOption.isClosed = this.isLineStringClosed(bestOption);
-        return bestOption;
-    }
-
-    /**
-     * Merge LineStrings at a specific connection point
-     * @private
-     */
-    mergeAtConnection(lineString1, lineString2, connection) {
+    mergeAtConnectionImproved(lineString1, lineString2, connection) {
         const { ep1, ep2 } = connection;
         
+        if (this.debug) {
+            console.log(`        Merging connection type: ${connection.connectionType}`);
+            console.log(`        Line1: ${lineString1.length} points (${ep1.isStart ? 'start' : 'end'} selected)`);
+            console.log(`        Line2: ${lineString2.length} points (${ep2.isStart ? 'start' : 'end'} selected)`);
+        }
+
         let result = [];
 
-        // Four cases for merging based on which endpoints connect:
+        // FIXED: Corrected merging logic for all four cases
         if (ep1.isStart && ep2.isStart) {
-            // start-to-start: reverse lineString1, then concat lineString2
+            // start1 connects to start2: reverse line1, then add line2 (skip duplicate point)
             result = [...lineString1.slice().reverse(), ...lineString2.slice(1)];
         } else if (ep1.isStart && !ep2.isStart) {
-            // start-to-end: concat lineString2, then lineString1
+            // start1 connects to end2: add line2, then line1 (skip duplicate point)
             result = [...lineString2, ...lineString1.slice(1)];
         } else if (!ep1.isStart && ep2.isStart) {
-            // end-to-start: concat lineString1, then lineString2
+            // end1 connects to start2: add line1, then line2 (skip duplicate point)
             result = [...lineString1, ...lineString2.slice(1)];
         } else {
-            // end-to-end: concat lineString1, then reverse of lineString2
+            // end1 connects to end2: add line1, then reverse line2 (skip duplicate point)
             result = [...lineString1, ...lineString2.slice().reverse().slice(1)];
         }
 
+        // Set properties
         result.level = lineString1.level;
         result.isClosed = this.isLineStringClosed(result);
-        return result;
+        result.mergedFrom = [
+            { tileOrigin: lineString1.tileOrigin, length: lineString1.length },
+            { tileOrigin: lineString2.tileOrigin, length: lineString2.length }
+        ];
+
+        // Verify the merge quality
+        const mergeQuality = this.verifyMergeQuality(lineString1, lineString2, result, connection);
+        
+        if (this.debug) {
+            console.log(`        Merge quality: gap=${mergeQuality.connectionGap.toFixed(6)}, valid=${mergeQuality.isValid}`);
+        }
+
+        return mergeQuality.isValid ? result : null;
     }
 
     /**
-     * Update boundary strips after merging
+     * Verify the quality of a merge operation
      * @private
      */
-    updateBoundaryStrips(level, strip1, strip2, mergedLineString) {
+    verifyMergeQuality(lineString1, lineString2, mergedResult, connection) {
+        const connectionGap = connection.distance;
+        const maxAllowedGap = Math.max(this.EPSILON * 100, this.BOUNDARY_TOLERANCE);
+        
+        const quality = {
+            connectionGap: connectionGap,
+            isValid: connectionGap < maxAllowedGap,
+            originalLengths: [lineString1.length, lineString2.length],
+            mergedLength: mergedResult.length,
+            expectedLength: lineString1.length + lineString2.length - 1 // -1 for merged point
+        };
+
+        // Additional validation
+        if (Math.abs(mergedResult.length - quality.expectedLength) > 2) {
+            quality.isValid = false;
+            quality.warning = 'Unexpected length change during merge';
+        }
+
+        return quality;
+    }
+
+    /**
+     * Update boundary strips after merging with improved tracking
+     * @private
+     */
+    updateBoundaryStripsImproved(level, strip1, strip2, mergedLineString) {
         const strips = this.boundaryStrips.get(level);
 
-        // Remove old strips
+        // Remove old strips more carefully
         for (const [stripKey, stripList] of strips.entries()) {
             const updatedList = stripList.filter(strip => 
                 strip.lineString !== strip1.lineString && 
@@ -492,19 +502,23 @@ class TiledIsolineBuilder {
         }
 
         // Add new strips for the merged LineString
-        this.addStripsForLineString(level, mergedLineString);
+        this.addStripsForLineStringImproved(level, mergedLineString);
     }
 
     /**
-     * Add strips for a LineString
+     * Add strips for a LineString with improved boundary detection
      * @private
      */
-    addStripsForLineString(level, lineString) {
+    addStripsForLineStringImproved(level, lineString) {
         // Determine which tiles this LineString spans
         const tileCoords = this.getLineStringTileCoords(lineString);
         
         for (const { i, j } of tileCoords) {
-            const boundaryIntersections = this.getBoundaryIntersections(i, j, lineString);
+            // Only add strips if this tile exists
+            const tileKey = `${i},${j}`;
+            if (!this.tiles.has(tileKey)) continue;
+
+            const boundaryIntersections = this.getBoundaryIntersectionsRobust(i, j, lineString);
             
             if (boundaryIntersections.length > 0) {
                 const strips = this.getStripsForLevel(level);
@@ -518,8 +532,9 @@ class TiledIsolineBuilder {
                     
                     strips.get(stripKey).push({
                         lineString: lineString,
-                        tileKey: `${i},${j}`,
-                        boundary: boundary
+                        tileKey: tileKey,
+                        boundary: boundary,
+                        endpoints: this.getLineStringEndpoints(lineString)
                     });
                 }
             }
@@ -599,13 +614,17 @@ class TiledIsolineBuilder {
 
         return {
             type: 'FeatureCollection',
-            features: features
+            features: features,
+            metadata: {
+                stats: this.stats,
+                tiles: this.tiles.size,
+                levels: this.levels.length
+            }
         };
     }
 
     /**
-     * Convert a LineString to a GeoJSON feature
-     * Convert closed LineStrings to Polygons
+     * Convert a LineString to a GeoJSON feature with improved handling
      * @private
      */
     lineStringToGeoJSON(lineString, level) {
@@ -624,7 +643,9 @@ class TiledIsolineBuilder {
                 type: 'Feature',
                 properties: {
                     level: level,
-                    original_type: 'closed_linestring'
+                    original_type: 'closed_linestring',
+                    merged: !!lineString.mergedFrom,
+                    point_count: coordinates.length
                 },
                 geometry: {
                     type: 'Polygon',
@@ -637,7 +658,9 @@ class TiledIsolineBuilder {
                 type: 'Feature',
                 properties: {
                     level: level,
-                    original_type: 'open_linestring'
+                    original_type: 'open_linestring',
+                    merged: !!lineString.mergedFrom,
+                    point_count: coordinates.length
                 },
                 geometry: {
                     type: 'LineString',
@@ -696,18 +719,21 @@ class TiledIsolineBuilder {
     }
 
     /**
-     * Get statistics about the current state (for debugging)
+     * Get comprehensive statistics about the current state
      * @returns {Object} - Statistics object
      */
     getStatistics() {
         const stats = {
+            ...this.stats,
             tiles: this.tiles.size,
             levels: this.levels.length,
             boundaryStrips: 0,
             mergedLineStrings: 0,
             totalLineStrings: 0,
             closedLineStrings: 0,
-            openLineStrings: 0
+            openLineStrings: 0,
+            averagePointsPerLineString: 0,
+            mergeSuccessRate: 0
         };
 
         // Count boundary strips
@@ -720,12 +746,16 @@ class TiledIsolineBuilder {
             stats.mergedLineStrings += lineStrings.length;
         }
 
-        // Count all LineStrings and categorize them
+        // Count all LineStrings and analyze them
         const allLineStrings = this.getAllIsolines();
+        let totalPoints = 0;
+        
         for (const [level, lineStrings] of allLineStrings.entries()) {
             stats.totalLineStrings += lineStrings.length;
             
             for (const lineString of lineStrings) {
+                totalPoints += lineString.length;
+                
                 if (this.isLineStringClosed(lineString)) {
                     stats.closedLineStrings++;
                 } else {
@@ -734,7 +764,232 @@ class TiledIsolineBuilder {
             }
         }
 
+        // Calculate averages and rates
+        if (stats.totalLineStrings > 0) {
+            stats.averagePointsPerLineString = totalPoints / stats.totalLineStrings;
+        }
+
+        if (this.stats.mergeAttempts > 0) {
+            stats.mergeSuccessRate = (this.stats.successfulMerges / this.stats.mergeAttempts * 100).toFixed(2);
+        }
+
         return stats;
+    }
+
+    /**
+     * Debug logging for tile processing
+     * @private
+     */
+    debugTileProcessing(i, j, tileLineStrings) {
+        console.log(`Tile (${i},${j}) processing results:`);
+        
+        for (const [level, lineStrings] of tileLineStrings.entries()) {
+            console.log(`  Level ${level}: ${lineStrings.length} linestrings`);
+            
+            lineStrings.forEach((ls, idx) => {
+                const endpoints = this.getLineStringEndpoints(ls);
+                console.log(`    LineString ${idx}: ${ls.length} points, closed: ${ls.isClosed}`);
+                
+                if (!endpoints.isClosed && ls.length >= 2) {
+                    console.log(`      Start: (${ls[0].lat.toFixed(3)}, ${ls[0].lon.toFixed(3)})`);
+                    console.log(`      End: (${ls[ls.length-1].lat.toFixed(3)}, ${ls[ls.length-1].lon.toFixed(3)})`);
+                }
+            });
+        }
+
+        // Show boundary strips
+        for (const [level, strips] of this.boundaryStrips.entries()) {
+            const stripCount = Array.from(strips.values()).reduce((sum, arr) => sum + arr.length, 0);
+            console.log(`  Boundary strips for level ${level}: ${stripCount} total`);
+            
+            for (const [stripKey, stripArray] of strips.entries()) {
+                if (stripArray.length > 0) {
+                    console.log(`    ${stripKey}: ${stripArray.length} strips`);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get detailed debug information about a specific level
+     * @param {number} level - The contour level to debug
+     * @returns {Object} - Debug information
+     */
+    debugLevel(level) {
+        const debug = {
+            level: level,
+            tiles: [],
+            boundaryStrips: {},
+            mergedLineStrings: 0,
+            unmergedLineStrings: 0,
+            connections: []
+        };
+
+        // Analyze tiles for this level
+        for (const [tileKey, levelLineStrings] of this.tileLineStrings.entries()) {
+            if (levelLineStrings.has(level)) {
+                const lineStrings = levelLineStrings.get(level);
+                debug.tiles.push({
+                    tileKey: tileKey,
+                    lineStringCount: lineStrings.length,
+                    lineStrings: lineStrings.map(ls => ({
+                        points: ls.length,
+                        closed: this.isLineStringClosed(ls),
+                        bounds: this.getLineStringBounds(ls)
+                    }))
+                });
+            }
+        }
+
+        // Analyze boundary strips
+        if (this.boundaryStrips.has(level)) {
+            const strips = this.boundaryStrips.get(level);
+            for (const [stripKey, stripArray] of strips.entries()) {
+                debug.boundaryStrips[stripKey] = stripArray.length;
+            }
+        }
+
+        // Count merged vs unmerged
+        if (this.mergedLineStrings.has(level)) {
+            debug.mergedLineStrings = this.mergedLineStrings.get(level).length;
+        }
+
+        // Calculate unmerged count
+        for (const [tileKey, levelLineStrings] of this.tileLineStrings.entries()) {
+            if (levelLineStrings.has(level)) {
+                const lineStrings = levelLineStrings.get(level);
+                for (const lineString of lineStrings) {
+                    const isMerged = this.mergedLineStrings.has(level) &&
+                        this.mergedLineStrings.get(level).includes(lineString);
+                    if (!isMerged) {
+                        debug.unmergedLineStrings++;
+                    }
+                }
+            }
+        }
+
+        return debug;
+    }
+
+    /**
+     * Get bounding box of a LineString
+     * @private
+     */
+    getLineStringBounds(lineString) {
+        if (lineString.length === 0) return null;
+
+        let minLat = lineString[0].lat;
+        let maxLat = lineString[0].lat;
+        let minLon = lineString[0].lon;
+        let maxLon = lineString[0].lon;
+
+        for (const point of lineString) {
+            minLat = Math.min(minLat, point.lat);
+            maxLat = Math.max(maxLat, point.lat);
+            minLon = Math.min(minLon, point.lon);
+            maxLon = Math.max(maxLon, point.lon);
+        }
+
+        return { minLat, maxLat, minLon, maxLon };
+    }
+
+    /**
+     * Validate the current state and identify potential issues
+     * @returns {Object} - Validation results
+     */
+    validateState() {
+        const validation = {
+            isValid: true,
+            warnings: [],
+            errors: [],
+            statistics: this.getStatistics()
+        };
+
+        // Check for orphaned boundary strips
+        for (const [level, strips] of this.boundaryStrips.entries()) {
+            for (const [stripKey, stripArray] of strips.entries()) {
+                if (stripArray.length === 0) {
+                    validation.warnings.push(`Empty boundary strip: ${stripKey} at level ${level}`);
+                } else if (stripArray.length > 10) {
+                    validation.warnings.push(`High boundary strip count: ${stripKey} has ${stripArray.length} strips at level ${level}`);
+                }
+            }
+        }
+
+        // Check for potential connection issues
+        for (const [level, lineStrings] of this.mergedLineStrings.entries()) {
+            for (const lineString of lineStrings) {
+                if (lineString.mergedFrom && lineString.mergedFrom.length > 2) {
+                    validation.warnings.push(`Complex merge detected: LineString at level ${level} merged from ${lineString.mergedFrom.length} sources`);
+                }
+            }
+        }
+
+        // Check merge success rate
+        if (this.stats.mergeAttempts > 0) {
+            const successRate = this.stats.successfulMerges / this.stats.mergeAttempts;
+            if (successRate < 0.5) {
+                validation.warnings.push(`Low merge success rate: ${(successRate * 100).toFixed(1)}%`);
+            }
+        }
+
+        // Check for extremely small LineStrings
+        const allIsolines = this.getAllIsolines();
+        for (const [level, lineStrings] of allIsolines.entries()) {
+            for (const lineString of lineStrings) {
+                if (lineString.length < 2) {
+                    validation.errors.push(`Invalid LineString at level ${level}: only ${lineString.length} points`);
+                    validation.isValid = false;
+                }
+            }
+        }
+
+        return validation;
+    }
+
+    /**
+     * Reset the builder state (for testing or reprocessing)
+     */
+    reset() {
+        this.tiles.clear();
+        this.tileLineStrings.clear();
+        this.boundaryStrips.clear();
+        this.mergedLineStrings.clear();
+        
+        this.stats = {
+            tilesProcessed: 0,
+            mergeAttempts: 0,
+            successfulMerges: 0,
+            boundaryConnections: 0
+        };
+
+        if (this.debug) {
+            console.log('TiledIsolineBuilder state reset');
+        }
+    }
+
+    /**
+     * Export configuration and state for debugging
+     * @returns {Object} - Complete state export
+     */
+    exportState() {
+        return {
+            configuration: {
+                levels: this.levels,
+                tileSize: this.tileSize,
+                epsilon: this.EPSILON,
+                stripWidth: this.STRIP_WIDTH,
+                boundaryTolerance: this.BOUNDARY_TOLERANCE,
+                debug: this.debug
+            },
+            tiles: Array.from(this.tiles.keys()),
+            statistics: this.getStatistics(),
+            validation: this.validateState(),
+            levelAnalysis: this.levels.reduce((acc, level) => {
+                acc[level] = this.debugLevel(level);
+                return acc;
+            }, {})
+        };
     }
 }
 
