@@ -1,183 +1,398 @@
+const SpatialIndex = require('./spatialIndex');
+
 class IsolineBuilder {
-    constructor() {
-      this.EPSILON = 0.000001;
-    }
-  
-    buildIsolines(segments, gridResolution = 1) {
-      const isolines = [];
-      const unused = new Set(segments);
-      const index = new Map();
+  constructor() {
+    this.EPSILON = 0.01;
+  }
+
+  /**
+   * Build isolines from segments (original method for closed polygons)
+   */
+  buildIsolines(segments, gridResolution) {
+    const segmentsByLevel = this.groupSegmentsByLevel(segments);
+    const isolines = [];
+
+    for (const [level, levelSegments] of segmentsByLevel.entries()) {
+      const chains = this.buildChains(levelSegments);
       
-      // Build a spatial index for quick neighbor lookup
-      for (const segment of segments) {
-        const key1 = this.hashPoint(segment.p1);
-        const key2 = this.hashPoint(segment.p2);
-        if (!index.has(key1)) index.set(key1, []);
-        if (!index.has(key2)) index.set(key2, []);
-        index.get(key1).push(segment);
-        index.get(key2).push(segment);
-      }
-      
-      while (unused.size > 0) {
-        const start = Array.from(unused)[0];
-        unused.delete(start);
-        const poly = [start.p1, start.p2];
-        // Store the level value from the segment
-        poly.level = start.level;
-        
-        let current = start.p2;
-        
-        let iterations = 0;
-        const MAX_ITERATIONS = segments.length * 2; // Safety limit
-        
-        while (!this.isClosed(poly) && iterations < MAX_ITERATIONS) {
-          iterations++;
-          
-          const neighbors = index.get(this.hashPoint(current)) || [];
-          const candidates = neighbors.filter(seg => 
-            unused.has(seg) && 
-            (this.pointsEqual(seg.p1, current) || this.pointsEqual(seg.p2, current))
-          );
-          
-          if (candidates.length === 0) break;
-          
-          // Apply heuristic: choose segment with farthest endpoint from previous point
-          let nextSegment = null;
-          let maxDistance = -Infinity;
-          
-          for (const seg of candidates) {
-            const endpoint = this.pointsEqual(seg.p1, current) ? seg.p2 : seg.p1;
-            const prevPoint = poly[poly.length - 2] || current; // Fallback to current
-            const dist = this.distance(prevPoint, endpoint);
-            
-            if (dist > maxDistance) {
-              maxDistance = dist;
-              nextSegment = seg;
-            }
-          }
-          
-          if (!nextSegment) break;
-          
-          unused.delete(nextSegment);
-          const nextPoint = this.pointsEqual(nextSegment.p1, current) ? 
-            nextSegment.p2 : nextSegment.p1;
-          
-          poly.push(nextPoint);
-          current = nextPoint;
+      for (const chain of chains) {
+        if (chain.length >= 3) {
+          // Force closure for polygons
+          const closedChain = this.ensureClosedChain(chain);
+          closedChain.level = level;
+          isolines.push(closedChain);
         }
-        
-        isolines.push(poly);
       }
+    }
+
+    return isolines;
+  }
+
+  /**
+   * Build LineStrings from segments
+   * Does NOT force closure, returns open LineStrings
+   */
+  buildLineStrings(segments, gridResolution) {
+    const segmentsByLevel = this.groupSegmentsByLevel(segments);
+    const lineStrings = [];
+
+    for (const [level, levelSegments] of segmentsByLevel.entries()) {
+      const chains = this.buildChains(levelSegments);
       
-      // Apply the ISOLINE-GLUE-U algorithm to merge unclosed isolines
-      return this.mergeUnclosedIsolines(isolines, gridResolution);
+      for (const chain of chains) {
+        if (chain.length >= 2) {
+          // Keep as LineString - do NOT force closure
+          const lineString = [...chain];
+          lineString.level = level;
+          lineStrings.push(lineString);
+        }
+      }
+    }
+
+    return lineStrings;
+  }
+
+  /**
+   * Group segments by contour level
+   */
+  groupSegmentsByLevel(segments) {
+    const segmentsByLevel = new Map();
+    
+    for (const segment of segments) {
+      const level = segment.level;
+      if (!segmentsByLevel.has(level)) {
+        segmentsByLevel.set(level, []);
+      }
+      segmentsByLevel.get(level).push(segment);
     }
     
-    mergeUnclosedIsolines(isolines, gridResolution) {
-      const closed = [];
-      const unclosed = [];
-      const μ = Math.sqrt(2) * gridResolution * 1.5; // Slightly larger threshold for better merging
-      
-      // Separate closed and unclosed isolines
-      isolines.forEach(poly => {
-        if (this.isClosed(poly)) {
-          closed.push(poly);
-        } else {
-          unclosed.push(poly);
-        }
-      });
-      
-      let mergeIterations = 0;
-      const MAX_MERGE_ITERATIONS = unclosed.length * 2; // Safety limit
-      
-      while (unclosed.length > 0 && mergeIterations < MAX_MERGE_ITERATIONS) {
-        mergeIterations++;
-        
-        const current = unclosed.pop();
-        let bestMatch = null;
-        let bestIndex = -1;
-        
-        // Find closest unclosed isoline within μ distance
-        for (let i = 0; i < unclosed.length; i++) {
-          const target = unclosed[i];
-          
-          // Check if current's end connects to target's start
-          const dEndToStart = this.distance(current[current.length - 1], target[0]);
-          
-          // Check if current's start connects to target's end
-          const dStartToEnd = this.distance(current[0], target[target.length - 1]);
-          
-          if (dEndToStart < μ || dStartToEnd < μ) {
-            const minDist = Math.min(dEndToStart, dStartToEnd);
-            const isStartToEnd = dStartToEnd < dEndToStart;
-            
-            if (!bestMatch || minDist < bestMatch.distance) {
-              bestMatch = { 
-                poly: target, 
-                distance: minDist,
-                startToEnd: isStartToEnd
-              };
-              bestIndex = i;
-            }
-          }
-        }
-        
-        // Merge if match found
-        if (bestMatch && bestIndex >= 0) {
-          let merged;
-          
-          if (bestMatch.startToEnd) {
-            // current's start connects to target's end
-            // Reverse current and append target
-            merged = [...current.slice().reverse(), ...bestMatch.poly];
+    return segmentsByLevel;
+  }
+
+  /**
+   * Build chains of connected segments using spatial indexing
+   */
+  buildChains(segments) {
+    if (segments.length === 0) return [];
+
+    const spatialIndex = new SpatialIndex(1);
+    spatialIndex.buildIndex(segments);
+    
+    const chains = [];
+    const usedSegments = new Set();
+
+    for (const segment of segments) {
+      if (usedSegments.has(segment)) continue;
+
+      const chain = this.buildChainFromSegment(segment, segments, spatialIndex, usedSegments);
+      if (chain.length > 0) {
+        chains.push(chain);
+      }
+    }
+
+    return chains;
+  }
+
+  /**
+   * Build a chain starting from a specific segment
+   */
+  buildChainFromSegment(startSegment, allSegments, spatialIndex, usedSegments) {
+    if (usedSegments.has(startSegment)) return [];
+
+    const chain = [
+      { lat: startSegment.p1.lat, lon: startSegment.p1.lon },
+      { lat: startSegment.p2.lat, lon: startSegment.p2.lon }
+    ];
+
+    usedSegments.add(startSegment);
+
+    // Try to extend the chain in both directions
+    this.extendChain(chain, allSegments, spatialIndex, usedSegments, 'forward');
+    this.extendChain(chain, allSegments, spatialIndex, usedSegments, 'backward');
+
+    return chain;
+  }
+
+  /**
+   * Extend chain in forward or backward direction
+   */
+  extendChain(chain, allSegments, spatialIndex, usedSegments, direction) {
+    let continuousExtension = true;
+
+    while (continuousExtension) {
+      continuousExtension = false;
+
+      const searchPoint = direction === 'forward' ? 
+        chain[chain.length - 1] : chain[0];
+
+      const neighbors = spatialIndex.findNeighbors(searchPoint);
+
+      for (const neighbor of neighbors) {
+        if (usedSegments.has(neighbor)) continue;
+
+        const connection = this.findConnection(searchPoint, neighbor);
+        if (connection) {
+          usedSegments.add(neighbor);
+
+          if (direction === 'forward') {
+            chain.push(connection.nextPoint);
           } else {
-            // current's end connects to target's start
-            merged = [...current, ...bestMatch.poly];
+            chain.unshift(connection.nextPoint);
           }
-          
-          // Preserve the level value
-          merged.level = current.level;
-          
-          unclosed.splice(bestIndex, 1);
-          
-          // Check if the merged polyline forms a closed loop
-          if (this.isClosed(merged)) {
-            closed.push(merged);
-          } else {
-            unclosed.push(merged);
-          }
-        } else {
-          // No match found, treat as a separate isoline
-          closed.push(current);
+
+          continuousExtension = true;
+          break;
         }
       }
-      
-      // Handle any remaining unclosed isolines
-      closed.push(...unclosed);
-      
-      return closed;
-    }
-    
-    isClosed(poly) {
-      return poly.length > 2 && 
-             this.pointsEqual(poly[0], poly[poly.length - 1]);
-    }
-    
-    pointsEqual(p1, p2) {
-      return Math.abs(p1.lat - p2.lat) < this.EPSILON && 
-             Math.abs(p1.lon - p2.lon) < this.EPSILON;
-    }
-    
-    hashPoint(point) {
-      return `${point.lat.toFixed(6)},${point.lon.toFixed(6)}`;
-    }
-    
-    distance(p1, p2) {
-      const dx = p1.lon - p2.lon;
-      const dy = p1.lat - p2.lat;
-      return Math.sqrt(dx * dx + dy * dy);
     }
   }
-  
-  module.exports = IsolineBuilder;
-  
+
+  /**
+   * Find connection between a point and a segment
+   */
+  findConnection(point, segment) {
+    const dist1 = this.distance(point, segment.p1);
+    const dist2 = this.distance(point, segment.p2);
+
+    if (dist1 < this.EPSILON) {
+      return { nextPoint: { lat: segment.p2.lat, lon: segment.p2.lon } };
+    } else if (dist2 < this.EPSILON) {
+      return { nextPoint: { lat: segment.p1.lat, lon: segment.p1.lon } };
+    }
+
+    return null;
+  }
+
+  /**
+   * Calculate distance between two points
+   */
+  distance(p1, p2) {
+    const dx = p1.lon - p2.lon;
+    const dy = p1.lat - p2.lat;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  /**
+   * Ensure chain is closed (for polygon generation)
+   */
+  ensureClosedChain(chain) {
+    if (chain.length < 3) return chain;
+
+    const first = chain[0];
+    const last = chain[chain.length - 1];
+
+    // Check if already closed
+    if (this.distance(first, last) < this.EPSILON) {
+      return chain;
+    }
+
+    // Force closure by adding first point to end
+    const closedChain = [...chain, { lat: first.lat, lon: first.lon }];
+    return closedChain;
+  }
+
+  /**
+   * NEW: Check if a chain is naturally closed (for LineString analysis)
+   */
+  isChainClosed(chain) {
+    if (chain.length < 3) return false;
+
+    const first = chain[0];
+    const last = chain[chain.length - 1];
+
+    return this.distance(first, last) < this.EPSILON;
+  }
+
+  /**
+   * NEW: Get chain statistics for debugging
+   */
+  getChainStatistics(chains) {
+    const stats = {
+      totalChains: chains.length,
+      closedChains: 0,
+      openChains: 0,
+      averageLength: 0,
+      minLength: Infinity,
+      maxLength: 0,
+      lengthDistribution: {}
+    };
+
+    let totalLength = 0;
+
+    for (const chain of chains) {
+      const length = chain.length;
+      totalLength += length;
+
+      if (this.isChainClosed(chain)) {
+        stats.closedChains++;
+      } else {
+        stats.openChains++;
+      }
+
+      stats.minLength = Math.min(stats.minLength, length);
+      stats.maxLength = Math.max(stats.maxLength, length);
+
+      // Length distribution
+      const lengthCategory = Math.floor(length / 10) * 10;
+      stats.lengthDistribution[lengthCategory] = 
+        (stats.lengthDistribution[lengthCategory] || 0) + 1;
+    }
+
+    stats.averageLength = totalLength / chains.length || 0;
+    if (stats.minLength === Infinity) stats.minLength = 0;
+
+    return stats;
+  }
+
+  /**
+   * NEW: Validate segments before processing
+   */
+  validateSegments(segments) {
+    const validSegments = [];
+    const errors = [];
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+
+      if (!segment.p1 || !segment.p2) {
+        errors.push(`Segment ${i}: Missing p1 or p2`);
+        continue;
+      }
+
+      if (typeof segment.p1.lat !== 'number' || typeof segment.p1.lon !== 'number' ||
+          typeof segment.p2.lat !== 'number' || typeof segment.p2.lon !== 'number') {
+        errors.push(`Segment ${i}: Invalid coordinates`);
+        continue;
+      }
+
+      if (isNaN(segment.p1.lat) || isNaN(segment.p1.lon) ||
+          isNaN(segment.p2.lat) || isNaN(segment.p2.lon)) {
+        errors.push(`Segment ${i}: NaN coordinates`);
+        continue;
+      }
+
+      if (this.distance(segment.p1, segment.p2) < this.EPSILON * 0.1) {
+        errors.push(`Segment ${i}: Zero-length segment`);
+        continue;
+      }
+
+      validSegments.push(segment);
+    }
+
+    if (errors.length > 0) {
+      console.warn('Segment validation errors:', errors);
+    }
+
+    return {
+      valid: validSegments,
+      errors: errors,
+      validCount: validSegments.length,
+      errorCount: errors.length
+    };
+  }
+
+  /**
+   * NEW: Build LineStrings with enhanced validation and statistics
+   */
+  buildLineStringsWithValidation(segments, gridResolution) {
+    console.log(`Building LineStrings from ${segments.length} segments`);
+
+    // Validate segments
+    const validation = this.validateSegments(segments);
+    console.log(`Validation: ${validation.validCount} valid, ${validation.errorCount} errors`);
+
+    if (validation.validCount === 0) {
+      console.warn('No valid segments to process');
+      return [];
+    }
+
+    // Build LineStrings from valid segments
+    const lineStrings = this.buildLineStrings(validation.valid, gridResolution);
+
+    // Get statistics
+    const stats = this.getChainStatistics(lineStrings);
+    console.log('LineString statistics:', stats);
+
+    return lineStrings;
+  }
+
+  /**
+   * NEW: Build isolines with enhanced validation and statistics
+   */
+  buildIsolinesWithValidation(segments, gridResolution) {
+    console.log(`Building Isolines from ${segments.length} segments`);
+
+    // Validate segments
+    const validation = this.validateSegments(segments);
+    console.log(`Validation: ${validation.validCount} valid, ${validation.errorCount} errors`);
+
+    if (validation.validCount === 0) {
+      console.warn('No valid segments to process');
+      return [];
+    }
+
+    // Build isolines from valid segments
+    const isolines = this.buildIsolines(validation.valid, gridResolution);
+
+    // Get statistics
+    const stats = this.getChainStatistics(isolines);
+    console.log('Isoline statistics:', stats);
+
+    return isolines;
+  }
+
+  /**
+   * Compare LineStrings vs Isolines for the same segments
+   */
+  compareLineStringsVsIsolines(segments, gridResolution) {
+    console.log('Comparing LineStrings vs Isolines approach...');
+
+    const validation = this.validateSegments(segments);
+    
+    if (validation.validCount === 0) {
+      return {
+        lineStrings: [],
+        isolines: [],
+        comparison: {
+          error: 'No valid segments to process'
+        }
+      };
+    }
+
+    const lineStrings = this.buildLineStrings(validation.valid, gridResolution);
+    const isolines = this.buildIsolines(validation.valid, gridResolution);
+
+    const lineStringStats = this.getChainStatistics(lineStrings);
+    const isolineStats = this.getChainStatistics(isolines);
+
+    const comparison = {
+      lineStrings: {
+        count: lineStrings.length,
+        closed: lineStringStats.closedChains,
+        open: lineStringStats.openChains,
+        averageLength: lineStringStats.averageLength
+      },
+      isolines: {
+        count: isolines.length,
+        closed: isolineStats.closedChains,
+        open: isolineStats.openChains,
+        averageLength: isolineStats.averageLength
+      },
+      difference: {
+        countDiff: isolines.length - lineStrings.length,
+        closedDiff: isolineStats.closedChains - lineStringStats.closedChains,
+        openDiff: isolineStats.openChains - lineStringStats.openChains
+      }
+    };
+
+    console.log('Comparison results:', comparison);
+
+    return {
+      lineStrings,
+      isolines,
+      comparison
+    };
+  }
+}
+
+module.exports = IsolineBuilder;
