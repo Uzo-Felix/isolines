@@ -85,4 +85,53 @@ class TiledIsolineBuilder {
         console.log(`Extracted strips for tile (${i},${j}): ${Object.keys(strips).length} boundaries`);
     }
 
+    /**
+     * Create expanded tile by attaching available boundary strips
+     * This ensures mathematical continuity across tile boundaries
+     */
+    createExpandedTile(i, j, tileData) {
+        // Start with original tile data
+        let expandedData = tileData.map(row => [...row]);
+        
+        // Get available strips from neighbors
+        const topStrip = this.dataStrips.get(`top_strip:${i}:${j}`);
+        const bottomStrip = this.dataStrips.get(`bottom_strip:${i}:${j}`);
+        const leftStrip = this.dataStrips.get(`left_strip:${i}:${j}`);
+        const rightStrip = this.dataStrips.get(`right_strip:${i}:${j}`);
+        
+        // Attach top strip (prepend rows)
+        if (topStrip) {
+            expandedData = [...topStrip, ...expandedData];
+            console.log(`Attached top strip to tile (${i},${j})`);
+        }
+        
+        // Attach bottom strip (append rows)
+        if (bottomStrip) {
+            expandedData = [...expandedData, ...bottomStrip];
+            console.log(`Attached bottom strip to tile (${i},${j})`);
+        }
+        
+        // Attach left strip (prepend columns to each row)
+        if (leftStrip) {
+            expandedData = expandedData.map((row, rowIndex) => {
+                const leftCols = leftStrip[rowIndex] || [];
+                return [...leftCols, ...row];
+            });
+            console.log(`Attached left strip to tile (${i},${j})`);
+        }
+        
+        // Attach right strip (append columns to each row)
+        if (rightStrip) {
+            expandedData = expandedData.map((row, rowIndex) => {
+                const rightCols = rightStrip[rowIndex] || [];
+                return [...row, ...rightCols];
+            });
+            console.log(`Attached right strip to tile (${i},${j})`);
+        }
+        
+        console.log(`Expanded tile (${i},${j}): ${tileData.length}x${tileData[0].length} → ${expandedData.length}x${expandedData[0].length}`);
+        
+        return expandedData;
+    }
+
 }
