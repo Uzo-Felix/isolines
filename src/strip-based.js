@@ -134,4 +134,36 @@ class TiledIsolineBuilder {
         return expandedData;
     }
 
+    /**
+     * Process tile using strip-based algorithm
+     * 1. Create expanded tile with strips
+     * 2. Generate LineStrings from expanded data  
+     * 3. Process each level independently (parallelizable)
+     */
+    processTileWithStrips(i, j, tileData) {
+        // Step 1: Create expanded tile with attached strips
+        const expandedData = this.createExpandedTile(i, j, tileData);
+        
+        // Step 2: Process each level independently
+        const allLineStrings = [];
+        
+        for (const level of this.levels) {
+            // Generate contour segments from expanded data
+            const segments = this.conrec.computeSegments(expandedData, [level]);
+            
+            // Build LineStrings from segments
+            const lineStrings = this.builder.buildLineStrings(segments, 1);
+            
+            // Transform coordinates to global space
+            const transformedLineStrings = this.transformToGlobalCoordinates(lineStrings, i, j, level);
+            
+            allLineStrings.push(...transformedLineStrings);
+        }
+        
+        console.log(`Generated ${allLineStrings.length} LineStrings for tile (${i},${j})`);
+        
+        // Step 3: Return as GeoJSON
+        return this.lineStringsToGeoJSON(allLineStrings);
+    }
+
 }
