@@ -206,6 +206,68 @@ class TiledIsolineBuilder {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
+    /**
+     * Convert LineStrings to GeoJSON format
+     * Closed LineStrings become Polygons, open ones remain LineStrings
+     */
+    lineStringsToGeoJSON(lineStrings) {
+        const features = lineStrings.map(lineString => {
+            const coordinates = lineString.map(point => [point.lon, point.lat]);
+            
+            // Check if LineString should be converted to Polygon
+            const isClosed = lineString.isClosed || this.isLineStringClosed(lineString);
+            
+            if (isClosed && coordinates.length >= 4) {
+                // Ensure polygon is properly closed
+                if (!this.isPolygonClosed(coordinates)) {
+                    coordinates.push([...coordinates[0]]);
+                }
+                
+                return {
+                    type: 'Feature',
+                    properties: {
+                        level: lineString.level,
+                        type: 'closed_contour'
+                    },
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [coordinates]
+                    }
+                };
+            } else {
+                // Keep as LineString
+                return {
+                    type: 'Feature',
+                    properties: {
+                        level: lineString.level,
+                        type: 'open_contour'
+                    },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: coordinates
+                    }
+                };
+            }
+        });
+        
+        return {
+            type: 'FeatureCollection',
+            features: features
+        };
+    }
+    
+    /**
+     * Check if polygon coordinates are closed
+     */
+    isPolygonClosed(coordinates) {
+        if (coordinates.length < 2) return false;
+        
+        const first = coordinates[0];
+        const last = coordinates[coordinates.length - 1];
+        
+        return first[0] === last[0] && first[1] === last[1];
+    }
+
 
 }
 
