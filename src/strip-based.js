@@ -166,4 +166,47 @@ class TiledIsolineBuilder {
         return this.lineStringsToGeoJSON(allLineStrings);
     }
 
+    /**
+     * Transform LineString coordinates to global coordinate system
+     * Simple translation - no complex transformations needed
+     */
+    transformToGlobalCoordinates(lineStrings, tileI, tileJ, level) {
+        return lineStrings.map(lineString => {
+            const transformedPoints = lineString.map(point => ({
+                lat: point.lat + (tileI * this.tileSize),
+                lon: point.lon + (tileJ * this.tileSize)
+            }));
+            
+            // Preserve level and closure information
+            transformedPoints.level = level;
+            transformedPoints.isClosed = this.isLineStringClosed(transformedPoints);
+            
+            return transformedPoints;
+        });
+    }
+    
+    /**
+     * Check if LineString forms a closed loop
+     */
+    isLineStringClosed(lineString) {
+        if (lineString.length < 3) return false;
+        
+        const first = lineString[0];
+        const last = lineString[lineString.length - 1];
+        
+        return this.distance(first, last) < this.EPSILON;
+    }
+    
+    /**
+     * Calculate distance between two points
+     */
+    distance(p1, p2) {
+        const dx = p1.lon - p2.lon;
+        const dy = p1.lat - p2.lat;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+
 }
+
+module.exports = TiledIsolineBuilder;
