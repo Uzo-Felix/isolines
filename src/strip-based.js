@@ -318,6 +318,92 @@ class TiledIsolineBuilder {
         return result;
     }
 
+    /**
+     * Get statistics about current state (for debugging and analysis)
+     */
+    getStatistics() {
+        const stats = {
+            tiles: this.tiles.size,
+            levels: this.levels.length,
+            dataStrips: this.dataStrips.size,
+            memoryEstimate: this.estimateMemoryUsage(),
+            stripCoverage: this.calculateStripCoverage()
+        };
+        
+        // Count features by type
+        const allIsolines = this.getAllIsolines();
+        stats.totalLineStrings = 0;
+        stats.closedLineStrings = 0;
+        stats.openLineStrings = 0;
+        stats.featuresByLevel = {};
+        
+        for (const [level, lineStrings] of allIsolines.entries()) {
+            stats.totalLineStrings += lineStrings.length;
+            stats.featuresByLevel[level] = lineStrings.length;
+            
+            for (const lineString of lineStrings) {
+                if (this.isLineStringClosed(lineString)) {
+                    stats.closedLineStrings++;
+                } else {
+                    stats.openLineStrings++;
+                }
+            }
+        }
+        
+        return stats;
+    }
+    
+    /**
+     * Estimate memory usage (for professor's memory analysis)
+     */
+    estimateMemoryUsage() {
+        const tileMemory = this.tiles.size * this.tileSize * this.tileSize * 8; // 8 bytes per float
+        const stripMemory = this.dataStrips.size * this.STRIP_WIDTH * this.tileSize * 8;
+        
+        return {
+            tiles: `${(tileMemory / 1024 / 1024).toFixed(2)} MB`,
+            strips: `${(stripMemory / 1024 / 1024).toFixed(2)} MB`,
+            total: `${((tileMemory + stripMemory) / 1024 / 1024).toFixed(2)} MB`,
+            stripOverhead: `${((stripMemory / tileMemory) * 100).toFixed(2)}%`
+        };
+    }
+    
+    /**
+     * Calculate strip coverage (how many boundaries have strips)
+     */
+    calculateStripCoverage() {
+        const coverage = {
+            totalBoundaries: 0,
+            coveredBoundaries: 0,
+            coverageByDirection: { top: 0, bottom: 0, left: 0, right: 0 }
+        };
+        
+        for (const [tileKey] of this.tiles.entries()) {
+            const [i, j] = tileKey.split(',').map(Number);
+            
+            // Check each boundary
+            const boundaries = [
+                { key: `top_strip:${i}:${j}`, direction: 'top' },
+                { key: `bottom_strip:${i}:${j}`, direction: 'bottom' },
+                { key: `left_strip:${i}:${j}`, direction: 'left' },
+                { key: `right_strip:${i}:${j}`, direction: 'right' }
+            ];
+            
+            for (const boundary of boundaries) {
+                coverage.totalBoundaries++;
+                if (this.dataStrips.has(boundary.key)) {
+                    coverage.coveredBoundaries++;
+                    coverage.coverageByDirection[boundary.direction]++;
+                }
+            }
+        }
+        
+        coverage.coveragePercentage = coverage.totalBoundaries > 0 
+            ? ((coverage.coveredBoundaries / coverage.totalBoundaries) * 100).toFixed(2) + '%'
+            : '0%';
+            
+        return coverage;
+    }
 
 }
 
