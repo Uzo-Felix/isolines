@@ -405,6 +405,46 @@ class TiledIsolineBuilder {
         return coverage;
     }
 
+    /**
+     * Process single level across all tiles (for parallelization)
+     * This method can be called from separate workers
+     */
+    processLevelAcrossAllTiles(level) {
+        const levelResults = [];
+        
+        for (const [tileKey, tileData] of this.tiles.entries()) {
+            const [i, j] = tileKey.split(',').map(Number);
+            
+            // Create expanded tile with strips
+            const expandedData = this.createExpandedTile(i, j, tileData);
+            
+            // Process only this level
+            const segments = this.conrec.computeSegments(expandedData, [level]);
+            const lineStrings = this.builder.buildLineStrings(segments, 1);
+            const transformed = this.transformToGlobalCoordinates(lineStrings, i, j, level);
+            
+            levelResults.push(...transformed);
+        }
+        
+        return levelResults;
+    }
+    
+    /**
+     * Parallel processing entry point (future enhancement)
+     */
+    async processAllLevelsInParallel() {
+        // This could be enhanced to use Web Workers
+        const promises = this.levels.map(level => 
+            Promise.resolve(this.processLevelAcrossAllTiles(level))
+        );
+        
+        const results = await Promise.all(promises);
+        
+        // Combine results from all levels
+        const allLineStrings = results.flat();
+        return this.lineStringsToGeoJSON(allLineStrings);
+    }
+
 }
 
 module.exports = TiledIsolineBuilder;
