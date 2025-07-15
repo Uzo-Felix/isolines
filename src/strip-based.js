@@ -445,6 +445,58 @@ class TiledIsolineBuilder {
         return this.lineStringsToGeoJSON(allLineStrings);
     }
 
+    /**
+     * Clear all data
+     */
+    clear() {
+        this.tiles.clear();
+        this.dataStrips.clear();
+        console.log('Cleared all tiles and strips');
+    }
+    
+    /**
+     * Remove specific tile and its strips
+     */
+    removeTile(i, j) {
+        const tileKey = `${i},${j}`;
+        this.tiles.delete(tileKey);
+        
+        // Remove strips provided by this tile
+        const stripKeys = [
+            `bottom_strip:${i-1}:${j}`,
+            `top_strip:${i+1}:${j}`,
+            `right_strip:${i}:${j-1}`,
+            `left_strip:${i}:${j+1}`
+        ];
+        
+        stripKeys.forEach(key => this.dataStrips.delete(key));
+        
+        console.log(`Removed tile (${i},${j}) and its strips`);
+    }
+    
+    /**
+     * Debug method: visualize strip availability
+     */
+    debugStripAvailability() {
+        console.log('\n=== STRIP AVAILABILITY DEBUG ===');
+        
+        for (const [tileKey] of this.tiles.entries()) {
+            const [i, j] = tileKey.split(',').map(Number);
+            
+            const strips = {
+                top: this.dataStrips.has(`top_strip:${i}:${j}`),
+                bottom: this.dataStrips.has(`bottom_strip:${i}:${j}`),
+                left: this.dataStrips.has(`left_strip:${i}:${j}`),
+                right: this.dataStrips.has(`right_strip:${i}:${j}`)
+            };
+            
+            const available = Object.values(strips).filter(Boolean).length;
+            console.log(`Tile (${i},${j}): ${available}/4 strips available`, strips);
+        }
+        
+        console.log(`Total strips stored: ${this.dataStrips.size}`);
+        console.log('================================\n');
+    }
 }
 
 module.exports = TiledIsolineBuilder;
