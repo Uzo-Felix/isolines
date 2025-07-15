@@ -268,6 +268,56 @@ class TiledIsolineBuilder {
         return first[0] === last[0] && first[1] === last[1];
     }
 
+    /**
+     * Get all current isolines as GeoJSON (main output method)
+     * Combines results from all processed tiles
+     */
+    getIsolinesAsGeoJSON() {
+        const allFeatures = [];
+        
+        // Process all tiles that have been added
+        for (const [tileKey, tileData] of this.tiles.entries()) {
+            const [i, j] = tileKey.split(',').map(Number);
+            
+            // Reprocess with current strip state
+            const tileGeoJSON = this.processTileWithStrips(i, j, tileData);
+            allFeatures.push(...tileGeoJSON.features);
+        }
+        
+        console.log(`Total features across all tiles: ${allFeatures.length}`);
+        
+        return {
+            type: 'FeatureCollection',
+            features: allFeatures
+        };
+    }
+    
+    /**
+     * Get all isolines organized by level (for analysis and debugging)
+     */
+    getAllIsolines() {
+        const result = new Map();
+        
+        // Process all tiles and group by level
+        for (const [tileKey, tileData] of this.tiles.entries()) {
+            const [i, j] = tileKey.split(',').map(Number);
+            const expandedData = this.createExpandedTile(i, j, tileData);
+            
+            for (const level of this.levels) {
+                const segments = this.conrec.computeSegments(expandedData, [level]);
+                const lineStrings = this.builder.buildLineStrings(segments, 1);
+                const transformed = this.transformToGlobalCoordinates(lineStrings, i, j, level);
+                
+                if (!result.has(level)) {
+                    result.set(level, []);
+                }
+                result.get(level).push(...transformed);
+            }
+        }
+        
+        return result;
+    }
+
 
 }
 
