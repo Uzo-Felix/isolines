@@ -3,9 +3,8 @@
  * Builds and merges isolines as new tiles arrive
  * Now uses LineString approach with boundary strips and overlaps detection
  */
-const IsolineBuilder = require('./isolineBuilder');
-const Conrec = require('./conrec');
-const SpatialIndex = require('./spatialIndex');
+const IsolineBuilder = require('../../core/isolineBuilder');
+const Conrec = require('../../core/conrec');
 
 class TiledIsolineBuilder {
     constructor(levels = [], tileSize = 128, options = {}) {
