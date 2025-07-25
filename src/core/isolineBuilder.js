@@ -168,11 +168,6 @@ class IsolineBuilder {
    */
   distance(p1, p2) {
     const dx = p1.lon - p2.lon;
-
-    // Handle dateline wrapping
-    if (dx > 180) dx -= 360;
-    if (dx < -180) dx += 360;
-    
     const dy = p1.lat - p2.lat;
     return Math.sqrt(dx * dx + dy * dy);
   }
