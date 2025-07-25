@@ -1,6 +1,10 @@
 /**
  * Strip-Based Tiled Isoline Builder
  * Uses PURE data-level merging with boundary strips for mathematical continuity
+ * 
+ * ALL LineStrings are forcefully closed to become Polygons
+ * for fair comparison with standard algorithm. Open contours get connecting segments
+ * from end point to start point to force closure.
  */
 const IsolineBuilder = require('../../core/isolineBuilder');
 const Conrec = require('../../core/conrec');
@@ -164,8 +168,8 @@ class TiledIsolineBuilder {
             // Since boundaries use IDENTICAL raw data, contours will naturally align!
             const segments = this.conrec.computeSegments(expandedData, [level]);
             
-            // Build LineStrings from segments
-            const lineStrings = this.builder.buildLineStrings(segments, 1);
+            // Build LineStrings from segments (with forced closure per supervisor requirement)
+            const lineStrings = this.builder.buildLineStrings(segments, 1, { forcePolygonClosure: true });
             
             // Transform coordinates to global space
             const transformedLineStrings = this.transformToGlobalCoordinates(lineStrings, i, j, level);
@@ -180,7 +184,7 @@ class TiledIsolineBuilder {
 
     /**
      * Transform LineString coordinates to global coordinate system
-     * Account for strip expansion offsets
+     * Account for strip expansion offsets and preserve closure metadata
      */
     transformToGlobalCoordinates(lineStrings, tileI, tileJ, level) {
         return lineStrings.map(lineString => {
@@ -195,8 +199,10 @@ class TiledIsolineBuilder {
                 };
             });
             
-            // Preserve level and check if naturally closed
+            // Preserve ALL metadata from isolineBuilder
             transformedPoints.level = level;
+            transformedPoints.closureInfo = lineString.closureInfo || {};
+            transformedPoints.closureMethod = lineString.closureMethod || 'unknown';
             transformedPoints.isClosed = this.isNaturallyClosed(transformedPoints);
             
             return transformedPoints;
@@ -219,48 +225,56 @@ class TiledIsolineBuilder {
 
     /**
      * Convert LineStrings to GeoJSON format
-     * Naturally closed LineStrings become Polygons
+     * LineStrings already have forced closure applied in isolineBuilder.js
      */
     lineStringsToGeoJSON(lineStrings) {
         const features = lineStrings.map(lineString => {
             const coordinates = lineString.map(point => [point.lon, point.lat]);
             
-            // Check if naturally closed
-            const isClosed = lineString.isClosed || this.isNaturallyClosed(lineString);
-            
-            if (isClosed && coordinates.length >= 4) {
-                // Ensure polygon is properly closed
-                if (!this.isPolygonClosed(coordinates)) {
-                    coordinates.push([...coordinates[0]]);
-                }
-                
-                return {
-                    type: 'Feature',
-                    properties: {
-                        level: lineString.level,
-                        type: 'closed_contour',
-                        source: 'strip_based'
-                    },
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [coordinates]
-                    }
-                };
-            } else {
-                return {
-                    type: 'Feature',
-                    properties: {
-                        level: lineString.level,
-                        type: 'open_contour',
-                        source: 'strip_based'
-                    },
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: coordinates
-                    }
-                };
+            // Skip invalid LineStrings (need at least 3 points for a polygon)
+            if (coordinates.length < 3) {
+                console.warn(`Skipping LineString with only ${coordinates.length} points (needs 3+ for polygon)`);
+                return null;
             }
-        });
+            
+            // Get closure information from isolineBuilder
+            const closureInfo = lineString.closureInfo || {};
+            const closureMethod = lineString.closureMethod || 'unknown';
+            
+            // Ensure polygon is properly closed for GeoJSON
+            if (!this.isPolygonClosed(coordinates)) {
+                coordinates.push([...coordinates[0]]);
+            }
+            
+            // ALL LineStrings become Polygons (closure already handled in core)
+            return {
+                type: 'Feature',
+                properties: {
+                    level: lineString.level,
+                    type: closureInfo.wasForciblyClosed ? 'forcefully_closed_contour' : 'naturally_closed_contour',
+                    source: 'strip_based',
+                    closure_method: closureMethod,
+                    original_length: closureInfo.originalLength || coordinates.length,
+                    was_forcibly_closed: closureInfo.wasForciblyClosed || false,
+                    was_naturally_closed: closureInfo.isNaturallyClosed || false
+                },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [coordinates]
+                }
+            };
+        }).filter(feature => feature !== null); // Remove invalid features
+        
+        const totalFeatures = features.length;
+        const forcedClosures = features.filter(f => f.properties.was_forcibly_closed).length;
+        const naturalClosures = features.filter(f => f.properties.was_naturally_closed && !f.properties.was_forcibly_closed).length;
+        const openOriginal = totalFeatures - forcedClosures - naturalClosures;
+        
+        console.log(`📊 GeoJSON Conversion Summary:`);
+        console.log(`   Total Polygons: ${totalFeatures}`);
+        console.log(`   Originally Natural: ${naturalClosures}`);
+        console.log(`   Originally Open (Forced): ${forcedClosures}`);
+        console.log(`   Unknown: ${openOriginal}`);
         
         return {
             type: 'FeatureCollection',
@@ -317,7 +331,7 @@ class TiledIsolineBuilder {
             
             // Process only this level
             const segments = this.conrec.computeSegments(expandedData, [level]);
-            const lineStrings = this.builder.buildLineStrings(segments, 1);
+            const lineStrings = this.builder.buildLineStrings(segments, 1, { forcePolygonClosure: true });
             const transformed = this.transformToGlobalCoordinates(lineStrings, i, j, level);
             
             levelResults.push(...transformed);
@@ -440,6 +454,10 @@ class TiledIsolineBuilder {
             byType: {
                 polygons: allIsolines.features.filter(f => f.geometry.type === 'Polygon').length,
                 lineStrings: allIsolines.features.filter(f => f.geometry.type === 'LineString').length
+            },
+            byClosureMethod: {
+                naturalClosures: allIsolines.features.filter(f => f.properties.closure_method === 'natural_closure').length,
+                forcedClosures: allIsolines.features.filter(f => f.properties.closure_method === 'forced_connection').length
             },
             byLevel: {}
         };
@@ -571,6 +589,52 @@ class TiledIsolineBuilder {
     }
 
     /**
+     * Get forced closure analysis for comparison with standard algorithm
+     */
+    getForcedClosureAnalysis() {
+        const geoJSON = this.getIsolinesAsGeoJSON();
+        
+        const analysis = {
+            algorithm: 'strip-based-forced-closure',
+            timestamp: new Date().toISOString(),
+            totalPolygons: geoJSON.features.length,
+            naturalClosures: geoJSON.features.filter(f => f.properties.closure_method === 'natural_closure').length,
+            forcedClosures: geoJSON.features.filter(f => f.properties.closure_method === 'forced_connection').length,
+            byLevel: {}
+        };
+        
+        // Analyze closure methods by level
+        for (const feature of geoJSON.features) {
+            const level = feature.properties.level;
+            if (!analysis.byLevel[level]) {
+                analysis.byLevel[level] = { natural: 0, forced: 0, total: 0 };
+            }
+            
+            analysis.byLevel[level].total++;
+            if (feature.properties.closure_method === 'natural_closure') {
+                analysis.byLevel[level].natural++;
+            } else if (feature.properties.closure_method === 'forced_connection') {
+                analysis.byLevel[level].forced++;
+            }
+        }
+        
+        // Calculate percentages
+        analysis.forcedClosureRate = analysis.totalPolygons > 0 ? 
+            (analysis.forcedClosures / analysis.totalPolygons * 100).toFixed(1) + '%' : '0%';
+        analysis.naturalClosureRate = analysis.totalPolygons > 0 ? 
+            (analysis.naturalClosures / analysis.totalPolygons * 100).toFixed(1) + '%' : '0%';
+        
+        // Add level-wise percentages
+        for (const level in analysis.byLevel) {
+            const levelData = analysis.byLevel[level];
+            levelData.forcedRate = levelData.total > 0 ? 
+                (levelData.forced / levelData.total * 100).toFixed(1) + '%' : '0%';
+        }
+        
+        return analysis;
+    }
+
+    /**
      * Clear all data (for memory optimization when debugging is complete)
      */
     clearForProduction() {
@@ -590,26 +654,39 @@ class TiledIsolineBuilder {
     /**
      * Get boundary continuity report
      * Shows how well the strip-based approach maintains continuity
+     * Updated for forced polygon closure approach
      */
     getBoundaryContinuityReport() {
         const report = {
-            algorithm: 'strip-based',
-            expectedBehavior: 'Perfect continuity through identical boundary data',
+            algorithm: 'strip-based-forced-closure',
+            expectedBehavior: 'Perfect continuity through identical boundary data + forced polygon closure',
             actualResults: {}
         };
         
         const geoJSON = this.getIsolinesAsGeoJSON();
         
-        // Analyze boundary crossings
+        // Analyze boundary crossings in Polygons (all features are now Polygons)
         let totalBoundaryCrossings = 0;
         let perfectContinuity = 0;
+        let forcedClosureAnalysis = {
+            totalPolygons: geoJSON.features.length,
+            naturallyClosedPolygons: 0,
+            forcedClosedPolygons: 0
+        };
         
         for (const feature of geoJSON.features) {
-            if (feature.geometry.type === 'LineString') {
-                const coords = feature.geometry.coordinates;
+            // Count closure methods
+            if (feature.properties.closure_method === 'natural_closure') {
+                forcedClosureAnalysis.naturallyClosedPolygons++;
+            } else if (feature.properties.closure_method === 'forced_connection') {
+                forcedClosureAnalysis.forcedClosedPolygons++;
+            }
+            
+            // Analyze boundary crossings in polygon coordinates
+            if (feature.geometry.type === 'Polygon') {
+                const coords = feature.geometry.coordinates[0]; // First ring of polygon
                 
-                // Check if line crosses tile boundaries
-                let crossesBoundary = false;
+                // Check if polygon edges cross tile boundaries
                 for (let i = 0; i < coords.length - 1; i++) {
                     const [lon1, lat1] = coords[i];
                     const [lon2, lat2] = coords[i + 1];
@@ -620,7 +697,6 @@ class TiledIsolineBuilder {
                     const tileJ2 = Math.floor(lon2 / this.tileSize);
                     
                     if (tileI1 !== tileI2 || tileJ1 !== tileJ2) {
-                        crossesBoundary = true;
                         totalBoundaryCrossings++;
                         
                         // In strip-based approach, all crossings should be perfect
@@ -634,9 +710,12 @@ class TiledIsolineBuilder {
             totalBoundaryCrossings,
             perfectContinuity,
             continuityRate: totalBoundaryCrossings > 0 ? perfectContinuity / totalBoundaryCrossings : 1,
+            forcedClosureAnalysis,
+            forcedClosureRate: forcedClosureAnalysis.totalPolygons > 0 ? 
+                forcedClosureAnalysis.forcedClosedPolygons / forcedClosureAnalysis.totalPolygons : 0,
             message: totalBoundaryCrossings === perfectContinuity ? 
-                'Perfect boundary continuity achieved' : 
-                'Some boundary continuity issues detected'
+                'Perfect boundary continuity achieved with forced closure approach' : 
+                'Some boundary continuity issues detected despite forced closure'
         };
         
         return report;
