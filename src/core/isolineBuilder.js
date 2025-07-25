@@ -30,9 +30,10 @@ class IsolineBuilder {
 
   /**
    * Build LineStrings from segments
-   * Does NOT force closure, returns open LineStrings
+   * Can optionally force closure to create polygons
    */
-  buildLineStrings(segments, gridResolution) {
+  buildLineStrings(segments, gridResolution, options = {}) {
+    const forcePolygonClosure = options.forcePolygonClosure || false;
     const segmentsByLevel = this.groupSegmentsByLevel(segments);
     const lineStrings = [];
 
@@ -41,12 +42,45 @@ class IsolineBuilder {
       
       for (const chain of chains) {
         if (chain.length >= 2) {
-          // Keep as LineString - do NOT force closure
-          const lineString = [...chain];
-          lineString.level = level;
-          lineStrings.push(lineString);
+          let processedChain = [...chain];
+          let closureInfo = {
+            wasForciblyClosed: false,
+            isNaturallyClosed: this.isChainClosed(chain),
+            originalLength: chain.length
+          };
+
+          // FORCE CLOSURE: If enabled and chain has enough points
+          if (forcePolygonClosure && chain.length >= 3) {
+            if (!closureInfo.isNaturallyClosed) {
+              // Add connecting segment from end to start
+              processedChain.push({ lat: chain[0].lat, lon: chain[0].lon });
+              closureInfo.wasForciblyClosed = true;
+              
+              console.log(`🔗 Forcefully closed LineString (level ${level}): connected end to start`);
+            }
+          }
+
+          // Add metadata for analysis
+          processedChain.level = level;
+          processedChain.closureInfo = closureInfo;
+          processedChain.closureMethod = closureInfo.wasForciblyClosed ? 'forced_connection' : 
+                                        (closureInfo.isNaturallyClosed ? 'natural_closure' : 'open_linestring');
+          
+          lineStrings.push(processedChain);
         }
       }
+    }
+
+    // Log summary if forcing closure
+    if (forcePolygonClosure) {
+      const totalChains = lineStrings.length;
+      const forcedClosures = lineStrings.filter(ls => ls.closureInfo.wasForciblyClosed).length;
+      const naturalClosures = lineStrings.filter(ls => ls.closureInfo.isNaturallyClosed && !ls.closureInfo.wasForciblyClosed).length;
+      
+      console.log(`📊 LineString Processing Summary (Force Closure Mode):`);
+      console.log(`   Total LineStrings: ${totalChains}`);
+      console.log(`   Natural Closures: ${naturalClosures}`);
+      console.log(`   Forced Closures: ${forcedClosures} (${((forcedClosures/totalChains)*100).toFixed(1)}%)`);
     }
 
     return lineStrings;
