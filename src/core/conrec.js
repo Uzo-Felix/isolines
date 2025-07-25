@@ -108,18 +108,17 @@ class Conrec {
     }
   }
 
-interpolate(z1, z2, level, lat1, lon1, lat2, lon2) {
+  interpolate(z1, z2, level, lat1, lon1, lat2, lon2) {
     if (Math.abs(z1 - z2) < this.EPSILON) {
-      return { lat: lat1, lon: this.normalizeAntimeridian(lon1) };
+      return { lat: lat1, lon: lon1 };
     }
     
     const t = (level - z1) / (z2 - z1);
     return {
       lat: lat1 + t * (lat2 - lat1),
-      lon: this.normalizeAntimeridian(lon1 + t * (lon2 - lon1))
+      lon: lon1 + t * (lon2 - lon1)
     };
-}
-
+  }
 
   normalizeAntimeridian(lon) {
     while (lon > 180) lon -= 360;
