@@ -1,8 +1,8 @@
 const SpatialIndex = require('./spatialIndex');
 
 class IsolineBuilder {
-  constructor() {
-    this.EPSILON = 0.01;
+  constructor(epsilon = 0.0001) {
+    this.EPSILON = epsilon;
   }
 
   /**
@@ -14,7 +14,7 @@ class IsolineBuilder {
 
     for (const [level, levelSegments] of segmentsByLevel.entries()) {
       const chains = this.buildChains(levelSegments);
-      
+
       for (const chain of chains) {
         if (chain.length >= 3) {
           // Force closure for polygons
@@ -29,58 +29,92 @@ class IsolineBuilder {
   }
 
   /**
-   * Build LineStrings from segments
-   * Can optionally force closure to create polygons
-   */
+     * Build LineStrings from segments.
+     * @param {Array} segments - Input contour segments.
+     * @param {number} gridResolution - (Not used, kept for compatibility)
+     * @param {object} options - 
+     *        forcePolygonClosure: if true, forcibly closes open chains into polygons.
+     *        epsilon: coordinate matching tolerance (default: this.EPSILON)
+     *        maxForceCloseDistance: max allowed "closing edge" length (default: 10*epsilon)
+     *        silent: disable logs
+     * @returns {Array} - Array of chain arrays with GeoJSON-style properties.
+     */
   buildLineStrings(segments, gridResolution, options = {}) {
-    const forcePolygonClosure = options.forcePolygonClosure || false;
+    const forcePolygonClosure = !!options.forcePolygonClosure;
+    const epsilon = typeof options.epsilon === 'number' ? options.epsilon : this.EPSILON;
+    const maxForceCloseDistance = typeof options.maxForceCloseDistance === 'number'
+      ? options.maxForceCloseDistance
+      : epsilon * 10;
+    const silent = !!options.silent;
+
     const segmentsByLevel = this.groupSegmentsByLevel(segments);
     const lineStrings = [];
 
+    // Remove consecutive duplicate or zero-length points in a chain
+    function cleanChain(chain, tol) {
+      if (chain.length < 2) return chain;
+      const cleaned = [chain[0]];
+      for (let i = 1; i < chain.length; i++) {
+        const prev = cleaned[cleaned.length - 1];
+        const cur = chain[i];
+        const dist = Math.sqrt((prev.lat - cur.lat) ** 2 + (prev.lon - cur.lon) ** 2);
+        if (dist > tol) {
+          cleaned.push(cur);
+        }
+      }
+      return cleaned;
+    }
+
+    // Compute Euclidean distance between endpoints
+    function endpointDistance(chain) {
+      const first = chain[0], last = chain[chain.length - 1];
+      return Math.sqrt((first.lat - last.lat) ** 2 + (first.lon - last.lon) ** 2);
+    }
+
     for (const [level, levelSegments] of segmentsByLevel.entries()) {
       const chains = this.buildChains(levelSegments);
-      
-      for (const chain of chains) {
-        if (chain.length >= 2) {
-          let processedChain = [...chain];
-          let closureInfo = {
-            wasForciblyClosed: false,
-            isNaturallyClosed: this.isChainClosed(chain),
-            originalLength: chain.length
-          };
 
-          // FORCE CLOSURE: If enabled and chain has enough points
-          if (forcePolygonClosure && chain.length >= 3) {
-            if (!closureInfo.isNaturallyClosed) {
-              // Add connecting segment from end to start
-              processedChain.push({ lat: chain[0].lat, lon: chain[0].lon });
-              closureInfo.wasForciblyClosed = true;
-              
-              console.log(`🔗 Forcefully closed LineString (level ${level}): connected end to start`);
-            }
+      for (const chainRaw of chains) {
+        let chain = cleanChain(chainRaw, epsilon);
+        if (chain.length < 3) continue; // skip degenerate lines
+
+        // Check closure
+        const isClosed = endpointDistance(chain) < epsilon;
+        let wasForciblyClosed = false;
+
+        // Only force-closure for long enough chains, and ONLY IF endpoints are not far apart
+        if (forcePolygonClosure && chain.length >= 3 && !isClosed) {
+          const dist = endpointDistance(chain);
+          if (dist < maxForceCloseDistance) {
+            chain = [...chain, { lat: chain[0].lat, lon: chain[0].lon }];
+            wasForciblyClosed = true;
+            if (!silent) console.log(`🔗 Closed LineString (level ${level}) with a forced edge (d=${dist})`);
+          } else {
+            if (!silent) console.log(`⚠️  Not closing LineString at level ${level}: endpoints d=${dist} exceeds maxForceCloseDistance`);
           }
-
-          // Add metadata for analysis
-          processedChain.level = level;
-          processedChain.closureInfo = closureInfo;
-          processedChain.closureMethod = closureInfo.wasForciblyClosed ? 'forced_connection' : 
-                                        (closureInfo.isNaturallyClosed ? 'natural_closure' : 'open_linestring');
-          
-          lineStrings.push(processedChain);
         }
+
+        const properties = {
+          level,
+          closure: isClosed ? (wasForciblyClosed ? 'forced_connection' : 'natural_closure') : 'open_linestring',
+          wasForciblyClosed,
+          isNaturallyClosed: isClosed && !wasForciblyClosed,
+          length: chain.length
+        };
+
+        chain.properties = properties;
+
+        lineStrings.push(chain);
       }
     }
 
-    // Log summary if forcing closure
-    if (forcePolygonClosure) {
-      const totalChains = lineStrings.length;
-      const forcedClosures = lineStrings.filter(ls => ls.closureInfo.wasForciblyClosed).length;
-      const naturalClosures = lineStrings.filter(ls => ls.closureInfo.isNaturallyClosed && !ls.closureInfo.wasForciblyClosed).length;
-      
-      console.log(`📊 LineString Processing Summary (Force Closure Mode):`);
-      console.log(`   Total LineStrings: ${totalChains}`);
-      console.log(`   Natural Closures: ${naturalClosures}`);
-      console.log(`   Forced Closures: ${forcedClosures} (${((forcedClosures/totalChains)*100).toFixed(1)}%)`);
+    //Log summary
+    if (forcePolygonClosure && !silent) {
+      const total = lineStrings.length;
+      const closed = lineStrings.filter(ls => ls.properties.closure !== 'open_linestring').length;
+      const forced = lineStrings.filter(ls => ls.properties.closure === 'forced_connection').length;
+      const natural = lineStrings.filter(ls => ls.properties.closure === 'natural_closure').length;
+      console.log(`📊 LineString Processing Summary: Total: ${total}, Closed: ${closed} (natural: ${natural}, forced: ${forced})`);
     }
 
     return lineStrings;
@@ -91,7 +125,7 @@ class IsolineBuilder {
    */
   groupSegmentsByLevel(segments) {
     const segmentsByLevel = new Map();
-    
+
     for (const segment of segments) {
       const level = segment.level;
       if (!segmentsByLevel.has(level)) {
@@ -99,7 +133,7 @@ class IsolineBuilder {
       }
       segmentsByLevel.get(level).push(segment);
     }
-    
+
     return segmentsByLevel;
   }
 
@@ -109,9 +143,9 @@ class IsolineBuilder {
   buildChains(segments) {
     if (segments.length === 0) return [];
 
-    const spatialIndex = new SpatialIndex(1);
+    const spatialIndex = new SpatialIndex(1, this.EPSILON);
     spatialIndex.buildIndex(segments);
-    
+
     const chains = [];
     const usedSegments = new Set();
 
@@ -156,7 +190,7 @@ class IsolineBuilder {
     while (continuousExtension) {
       continuousExtension = false;
 
-      const searchPoint = direction === 'forward' ? 
+      const searchPoint = direction === 'forward' ?
         chain[chain.length - 1] : chain[0];
 
       const neighbors = spatialIndex.findNeighbors(searchPoint);
@@ -268,7 +302,7 @@ class IsolineBuilder {
 
       // Length distribution
       const lengthCategory = Math.floor(length / 10) * 10;
-      stats.lengthDistribution[lengthCategory] = 
+      stats.lengthDistribution[lengthCategory] =
         (stats.lengthDistribution[lengthCategory] || 0) + 1;
     }
 
@@ -294,13 +328,13 @@ class IsolineBuilder {
       }
 
       if (typeof segment.p1.lat !== 'number' || typeof segment.p1.lon !== 'number' ||
-          typeof segment.p2.lat !== 'number' || typeof segment.p2.lon !== 'number') {
+        typeof segment.p2.lat !== 'number' || typeof segment.p2.lon !== 'number') {
         errors.push(`Segment ${i}: Invalid coordinates`);
         continue;
       }
 
       if (isNaN(segment.p1.lat) || isNaN(segment.p1.lon) ||
-          isNaN(segment.p2.lat) || isNaN(segment.p2.lon)) {
+        isNaN(segment.p2.lat) || isNaN(segment.p2.lon)) {
         errors.push(`Segment ${i}: NaN coordinates`);
         continue;
       }
@@ -382,7 +416,7 @@ class IsolineBuilder {
     console.log('Comparing LineStrings vs Isolines approach...');
 
     const validation = this.validateSegments(segments);
-    
+
     if (validation.validCount === 0) {
       return {
         lineStrings: [],
