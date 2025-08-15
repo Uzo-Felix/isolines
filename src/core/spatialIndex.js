@@ -1,6 +1,6 @@
 class SpatialIndex {
-    constructor(gridSize = 10) {
-      this.EPSILON = 0.01;
+    constructor(gridSize = 10, epsilon = 0.0001) {
+      this.EPSILON = epsilon;
       this.rTree = new Map();
       this.gridSize = gridSize;
     }

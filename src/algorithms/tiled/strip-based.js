@@ -14,6 +14,7 @@ class TiledIsolineBuilder {
         this.levels = levels;
         this.tileSize = tileSize;
         this.debugMode = debugMode;
+        this.EPSILON = 0.0001;
 
         // Core data storage
         this.tiles = new Map();           // Keep raw tiles (for debugging & other GIS ops)
@@ -24,8 +25,8 @@ class TiledIsolineBuilder {
         this.neighborLineStrings = new Map(); // LineStrings from neighboring tiles
 
         // Processing components
-        this.conrec = new Conrec();
-        this.builder = new IsolineBuilder();
+        this.conrec = new Conrec(this.EPSILON);
+        this.builder = new IsolineBuilder(this.EPSILON);
         this.STRIP_WIDTH = 2;             // 2 rows/columns for boundary overlap
 
         // Debug tracking
@@ -376,7 +377,7 @@ class TiledIsolineBuilder {
     /**
      * OVERLAPS function - detects if two LineStrings overlap geometrically
      */
-    detectOverlaps(lineString1, lineString2, tolerance = 0.0001) {
+    detectOverlaps(lineString1, lineString2, tolerance = this.EPSILON) {
         // Check if LineStrings have the same level (contour value)
         if (lineString1.level !== lineString2.level) {
             return false;
@@ -464,10 +465,13 @@ class TiledIsolineBuilder {
         // Find closest endpoint pair
         for (const ep1 of endpoints1) {
             for (const ep2 of endpoints2) {
-                const distance = Math.sqrt(
-                    Math.pow(ep1.point.lat - ep2.point.lat, 2) +
-                    Math.pow(ep1.point.lon - ep2.point.lon, 2)
-                );
+
+                // const distance = Math.sqrt(
+                //     Math.pow(ep1.point.lat - ep2.point.lat, 2) +
+                //     Math.pow(ep1.point.lon - ep2.point.lon, 2)
+                // );
+
+                const distance = Math.hypot(ep1.point.lat - ep2.point.lat, ep1.point.lon - ep2.point.lon);
 
                 if (distance < minDistance) {
                     minDistance = distance;
