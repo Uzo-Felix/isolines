@@ -33,13 +33,15 @@ class SpatialIndex {
       const neighbors = [];
       const visited = new Set();
       
+      // Check the 3x3 grid centered on the point
       for (let x = gridX - 1; x <= gridX + 1; x++) {
         for (let y = gridY - 1; y <= gridY + 1; y++) {
           const key = `${x},${y}`;
           const segments = this.rTree.get(key) || [];
           
           for (const segment of segments) {
-            if (!visited.has(segment) && this.isNearPoint(segment, point)) {
+            // Check if the segment is near the point, not just the endpoints
+            if (!visited.has(segment) && this.distanceToSegment(segment, point) < this.EPSILON) {
               neighbors.push(segment);
               visited.add(segment);
             }
@@ -50,9 +52,40 @@ class SpatialIndex {
       return neighbors;
     }
   
-    isNearPoint(segment, point) {
-      return this.distance(segment.p1, point) < this.EPSILON || 
-             this.distance(segment.p2, point) < this.EPSILON;
+    /**
+     * Calculates the shortest distance from a point to a line segment.
+     * This is a more robust check than just using the endpoints.
+     */
+    distanceToSegment(segment, point) {
+      const p1 = segment.p1;
+      const p2 = segment.p2;
+      const dx = p2.lon - p1.lon;
+      const dy = p2.lat - p1.lat;
+      
+      if (dx === 0 && dy === 0) {
+        // Segment is a single point
+        return this.distance(p1, point);
+      }
+      
+      // Calculate the parameter t of the projection of the point onto the line
+      const t = ((point.lon - p1.lon) * dx + (point.lat - p1.lat) * dy) / (dx * dx + dy * dy);
+      
+      let closestPoint;
+      if (t < 0) {
+        // Closest point is the start of the segment
+        closestPoint = p1;
+      } else if (t > 1) {
+        // Closest point is the end of the segment
+        closestPoint = p2;
+      } else {
+        // Closest point is on the segment
+        closestPoint = {
+          lon: p1.lon + t * dx,
+          lat: p1.lat + t * dy
+        };
+      }
+      
+      return this.distance(closestPoint, point);
     }
   
     distance(p1, p2) {
@@ -72,4 +105,3 @@ class SpatialIndex {
   }
   
   module.exports = SpatialIndex;
-  
