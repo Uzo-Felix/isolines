@@ -14,13 +14,11 @@ class IsolineBuilder {
 
     for (const [level, levelSegments] of segmentsByLevel.entries()) {
       const chains = this.buildChains(levelSegments);
-
       for (const chain of chains) {
         if (chain.length >= 3) {
-          // Force closure for polygons
-          const closedChain = this.ensureClosedChain(chain);
-          closedChain.level = level;
-          isolines.push(closedChain);
+          // Do not force closure here; allow chains to remain open
+          chain.level = level;
+          isolines.push(chain);
         }
       }
     }
