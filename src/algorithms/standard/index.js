@@ -23,7 +23,7 @@ class StandardIsolineGenerator {
         // Generate segments for all levels
         const segments = this.conrec.computeSegments(gridData, this.levels);
         
-        // Build isolines (closed polygons)
+        // Build isolines (without forced closure)
         const isolines = this.builder.buildIsolines(segments, 1);
         
         return isolines;
@@ -48,30 +48,34 @@ class StandardIsolineGenerator {
                 point.lat / scaleFactor
             ]);
 
-            // Ensure polygon is closed
-            if (coordinates.length > 0 && 
-                (coordinates[0][0] !== coordinates[coordinates.length - 1][0] ||
-                 coordinates[0][1] !== coordinates[coordinates.length - 1][1])) {
-                coordinates.push([...coordinates[0]]);
-            }
+            // Check if naturally closed
+            const isClosed = coordinates.length > 0 && 
+                coordinates[0][0] === coordinates[coordinates.length - 1][0] &&
+                coordinates[0][1] === coordinates[coordinates.length - 1][1];
+
+            // Use LineString for open chains, Polygon for closed chains
+            const geometryType = isClosed ? 'Polygon' : 'LineString';
+            const geometryCoordinates = isClosed ? [coordinates] : coordinates;
 
             return {
                 type: 'Feature',
                 properties: {
                     level: isoline.level,
-                    algorithm: 'standard'
+                    algorithm: 'standard',
+                    closed: isClosed
                 },
                 geometry: {
-                    type: 'Polygon',
-                    coordinates: [coordinates]
+                    type: geometryType,
+                    coordinates: geometryCoordinates
                 }
             };
-        }).filter(feature => 
-            feature.geometry.coordinates[0].length >= 4 &&
-            feature.geometry.coordinates[0].every(coord => 
-                !isNaN(coord[0]) && !isNaN(coord[1])
-            )
-        );
+        }).filter(feature => {
+            const coords = feature.geometry.type === 'Polygon' 
+                ? feature.geometry.coordinates[0] 
+                : feature.geometry.coordinates;
+            return coords.length >= 2 &&
+                coords.every(coord => !isNaN(coord[0]) && !isNaN(coord[1]));
+        });
 
         return {
             type: 'FeatureCollection',
