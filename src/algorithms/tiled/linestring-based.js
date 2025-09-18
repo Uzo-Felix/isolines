@@ -39,7 +39,7 @@ class TiledIsolineBuilder {
      */
     addTile(i, j, tileData) {
         if (this.debug) {
-            console.log(`\n=== Processing tile (${i},${j}) ===`);
+            // console.log(`\n=== Processing tile (${i},${j}) ===`);
         }
 
         if (!tileData || tileData.length === 0) {
@@ -91,14 +91,14 @@ class TiledIsolineBuilder {
         const tileLineStrings = new Map();
 
         if (this.debug) {
-            console.log(`Processing tile (${i},${j}) with ${tileData.length}x${tileData[0].length} data`);
+            // console.log(`Processing tile (${i},${j}) with ${tileData.length}x${tileData[0].length} data`);
         }
 
         for (const level of this.levels) {
             const segments = this.conrec.computeSegments(tileData, [level]);
 
             if (this.debug) {
-                console.log(`Level ${level}: Generated ${segments.length} segments`);
+                // console.log(`Level ${level}: Generated ${segments.length} segments`);
             }
 
             // Use buildLineStrings instead of buildIsolines to get open LineStrings
@@ -138,9 +138,9 @@ class TiledIsolineBuilder {
             tileLineStrings.set(level, transformedLineStrings);
 
             if (this.debug) {
-                console.log(`Level ${level}: Created ${transformedLineStrings.length} linestrings`);
+                // console.log(`Level ${level}: Created ${transformedLineStrings.length} linestrings`);
                 transformedLineStrings.forEach((ls, idx) => {
-                    console.log(`  LineString ${idx}: ${ls.length} points, closed: ${ls.isClosed}`);
+                    // console.log(`  LineString ${idx}: ${ls.length} points, closed: ${ls.isClosed}`);
                 });
             }
         }
@@ -156,7 +156,7 @@ class TiledIsolineBuilder {
         const tileKey = `${i},${j}`;
         
         if (this.debug) {
-            console.log(`Extracting boundary strips for tile (${i},${j})`);
+            // console.log(`Extracting boundary strips for tile (${i},${j})`);
         }
         
         for (const [level, lineStrings] of tileLineStrings.entries()) {
@@ -168,7 +168,7 @@ class TiledIsolineBuilder {
                 
                 if (boundaryIntersections.length > 0) {
                     if (this.debug) {
-                        console.log(`LineString crosses boundaries: ${boundaryIntersections.join(', ')}`);
+                        // console.log(`LineString crosses boundaries: ${boundaryIntersections.join(', ')}`);
                     }
                     
                     // Store strips for each boundary this LineString crosses
@@ -276,20 +276,20 @@ class TiledIsolineBuilder {
         ];
 
         if (this.debug) {
-            console.log(`Checking neighbors for tile (${i},${j})`);
+            // console.log(`Checking neighbors for tile (${i},${j})`);
         }
 
         for (const neighbor of neighbors) {
             const neighborKey = `${neighbor.i},${neighbor.j}`;
             if (!this.tiles.has(neighborKey)) {
                 if (this.debug) {
-                    console.log(`  Neighbor (${neighbor.i},${neighbor.j}) not available`);
+                    // console.log(`  Neighbor (${neighbor.i},${neighbor.j}) not available`);
                 }
                 continue;
             }
 
             if (this.debug) {
-                console.log(`  Merging with neighbor (${neighbor.i},${neighbor.j}) via ${neighbor.boundary}`);
+                // console.log(`  Merging with neighbor (${neighbor.i},${neighbor.j}) via ${neighbor.boundary}`);
             }
 
             for (const level of this.levels) {
@@ -317,7 +317,7 @@ class TiledIsolineBuilder {
         this.stats.mergeAttempts++;
 
         if (this.debug) {
-            console.log(`    Attempting merge at level ${level}: ${strips1.length} vs ${strips2.length} strips`);
+            // console.log(`    Attempting merge at level ${level}: ${strips1.length} vs ${strips2.length} strips`);
         }
 
         // Find connections using improved detection
@@ -327,7 +327,7 @@ class TiledIsolineBuilder {
                 
                 if (connection) {
                     if (this.debug) {
-                        console.log(`      Found connection: distance=${connection.distance.toFixed(6)}`);
+                        // console.log(`      Found connection: distance=${connection.distance.toFixed(6)}`);
                     }
 
                     const mergedLineString = this.mergeAtConnectionImproved(
@@ -359,7 +359,7 @@ class TiledIsolineBuilder {
                         this.stats.boundaryConnections++;
 
                         if (this.debug) {
-                            console.log(`      Merge successful: ${mergedLineString.length} points`);
+                            // console.log(`      Merge successful: ${mergedLineString.length} points`);
                         }
                     }
                 }
@@ -414,9 +414,9 @@ class TiledIsolineBuilder {
         const { ep1, ep2 } = connection;
         
         if (this.debug) {
-            console.log(`        Merging connection type: ${connection.connectionType}`);
-            console.log(`        Line1: ${lineString1.length} points (${ep1.isStart ? 'start' : 'end'} selected)`);
-            console.log(`        Line2: ${lineString2.length} points (${ep2.isStart ? 'start' : 'end'} selected)`);
+            // console.log(`        Merging connection type: ${connection.connectionType}`);
+            // console.log(`        Line1: ${lineString1.length} points (${ep1.isStart ? 'start' : 'end'} selected)`);
+            // console.log(`        Line2: ${lineString2.length} points (${ep2.isStart ? 'start' : 'end'} selected)`);
         }
 
         let result = [];
@@ -448,7 +448,7 @@ class TiledIsolineBuilder {
         const mergeQuality = this.verifyMergeQuality(lineString1, lineString2, result, connection);
         
         if (this.debug) {
-            console.log(`        Merge quality: gap=${mergeQuality.connectionGap.toFixed(6)}, valid=${mergeQuality.isValid}`);
+            // console.log(`        Merge quality: gap=${mergeQuality.connectionGap.toFixed(6)}, valid=${mergeQuality.isValid}`);
         }
 
         return mergeQuality.isValid ? result : null;
@@ -780,18 +780,18 @@ class TiledIsolineBuilder {
      * @private
      */
     debugTileProcessing(i, j, tileLineStrings) {
-        console.log(`Tile (${i},${j}) processing results:`);
+        // console.log(`Tile (${i},${j}) processing results:`);
         
         for (const [level, lineStrings] of tileLineStrings.entries()) {
-            console.log(`  Level ${level}: ${lineStrings.length} linestrings`);
+            // console.log(`  Level ${level}: ${lineStrings.length} linestrings`);
             
             lineStrings.forEach((ls, idx) => {
                 const endpoints = this.getLineStringEndpoints(ls);
-                console.log(`    LineString ${idx}: ${ls.length} points, closed: ${ls.isClosed}`);
+                // console.log(`    LineString ${idx}: ${ls.length} points, closed: ${ls.isClosed}`);
                 
                 if (!endpoints.isClosed && ls.length >= 2) {
-                    console.log(`      Start: (${ls[0].lat.toFixed(3)}, ${ls[0].lon.toFixed(3)})`);
-                    console.log(`      End: (${ls[ls.length-1].lat.toFixed(3)}, ${ls[ls.length-1].lon.toFixed(3)})`);
+                    // console.log(`      Start: (${ls[0].lat.toFixed(3)}, ${ls[0].lon.toFixed(3)})`);
+                    // console.log(`      End: (${ls[ls.length-1].lat.toFixed(3)}, ${ls[ls.length-1].lon.toFixed(3)})`);
                 }
             });
         }
@@ -799,11 +799,11 @@ class TiledIsolineBuilder {
         // Show boundary strips
         for (const [level, strips] of this.boundaryStrips.entries()) {
             const stripCount = Array.from(strips.values()).reduce((sum, arr) => sum + arr.length, 0);
-            console.log(`  Boundary strips for level ${level}: ${stripCount} total`);
+            // console.log(`  Boundary strips for level ${level}: ${stripCount} total`);
             
             for (const [stripKey, stripArray] of strips.entries()) {
                 if (stripArray.length > 0) {
-                    console.log(`    ${stripKey}: ${stripArray.length} strips`);
+                    // console.log(`    ${stripKey}: ${stripArray.length} strips`);
                 }
             }
         }
@@ -963,7 +963,7 @@ class TiledIsolineBuilder {
         };
 
         if (this.debug) {
-            console.log('TiledIsolineBuilder state reset');
+            // console.log('TiledIsolineBuilder state reset');
         }
     }
 
