@@ -1,0 +1,245 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1050" width="1500" height="1050">
+  <defs>
+    <style>
+      .title { font-size: 26px; font-weight: bold; fill: #00d4ff; }
+      .subtitle { font-size: 14px; fill: #aaa; }
+      .section-title { font-size: 15px; font-weight: bold; fill: #00d4ff; }
+      .step-label { font-size: 12px; fill: #ccc; }
+      .tile-label { font-size: 11px; fill: #aaa; }
+      .segment { stroke: #00d4ff; stroke-width: 2; }
+      .segment-thick { stroke: #00d4ff; stroke-width: 2.5; }
+      .endpoint { fill: #00ff00; }
+      .segment-clip { stroke: #ff6b6b; stroke-width: 2; stroke-dasharray: 3,3; opacity: 0.6; }
+      .buffer-region { fill: #ffaa00; opacity: 0.2; }
+      .tile-core { fill: #1a2a3a; stroke: #333; stroke-width: 2; }
+      .tile-buffered { fill: #1a3a3a; stroke: #ffaa00; stroke-width: 1.5; }
+      .boundary { stroke: #ffa500; stroke-width: 2; stroke-dasharray: 4,4; }
+      .clipping-line { stroke: #ff6b6b; stroke-width: 2; }
+      .box { fill: #1a1a2e; stroke: #333; stroke-width: 1; }
+      .highlight-box { fill: #3a2a1a; stroke: #ff6b6b; stroke-width: 1.5; }
+      .arrow { stroke: #ffa500; stroke-width: 1.5; marker-end: url(#arrowhead); }
+      .grid { stroke: #333; stroke-width: 0.5; }
+      .issue { fill: #ff6b6b; opacity: 0.4; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#ffa500"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1500" height="1050" fill="#0f0f1e"/>
+
+  <!-- Title -->
+  <text x="750" y="35" text-anchor="middle" class="title">Approach 4: Buffer-Based Tile Processing</text>
+  <text x="750" y="60" text-anchor="middle" class="subtitle">Extract with buffer zones, process, clip to tile bounds</text>
+
+  <!-- Phase 1: Extract with Buffer -->
+  <g id="phase1">
+    <text x="50" y="95" class="section-title">Phase 1: Extract Tile with Buffer Zone</text>
+    
+    <!-- Core tile -->
+    <rect x="100" y="140" width="140" height="140" class="tile-core"/>
+    <text x="170" y="180" text-anchor="middle" class="step-label" style="font-size: 10px;">64×64</text>
+    <text x="170" y="195" text-anchor="middle" class="step-label" style="font-size: 10px;">tile</text>
+    
+    <!-- Buffer zones -->
+    <rect x="70" y="110" width="200" height="200" class="tile-buffered"/>
+    <rect x="70" y="110" width="200" height="200" fill="none" stroke="#ffaa00" stroke-width="2" stroke-dasharray="3,3"/>
+    
+    <!-- Buffer regions -->
+    <rect x="70" y="110" width="200" height="30" class="buffer-region"/>
+    <rect x="70" y="250" width="200" height="30" class="buffer-region"/>
+    <rect x="70" y="140" width="30" height="140" class="buffer-region"/>
+    <rect x="270" y="140" width="30" height="140" class="buffer-region"/>
+    
+    <!-- Labels -->
+    <text x="170" y="330" text-anchor="middle" class="tile-label">Buffer width = 2 pixels</text>
+    <text x="170" y="345" text-anchor="middle" class="tile-label">Result: 68×68 buffered tile</text>
+    
+    <!-- Dimension annotations -->
+    <line x1="50" y1="310" x2="50" y2="130" stroke="#ccc" stroke-width="1" stroke-dasharray="2,2"/>
+    <line x1="50" y1="310" x2="50" y2="260" stroke="#ccc" stroke-width="1.5"/>
+    <text x="35" y="285" text-anchor="end" class="tile-label" style="font-size: 10px;">2px</text>
+    
+    <line x1="40" y1="355" x2="300" y2="355" stroke="#ccc" stroke-width="1" stroke-dasharray="2,2"/>
+    <line x1="70" y1="355" x2="270" y2="355" stroke="#ccc" stroke-width="1.5"/>
+    <text x="170" y="375" text-anchor="middle" class="tile-label" style="font-size: 10px;">68px</text>
+  </g>
+
+  <!-- Phase 2: Generate Contours -->
+  <g id="phase2">
+    <text x="420" y="95" class="section-title">Phase 2: Apply CONREC to Buffered Data</text>
+    
+    <!-- Buffered tile -->
+    <rect x="380" y="140" width="150" height="150" class="tile-buffered"/>
+    <g class="grid" stroke="#333" stroke-width="0.5">
+      <line x1="380" y1="170" x2="530" y2="170"/>
+      <line x1="380" y1="200" x2="530" y2="200"/>
+      <line x1="405" y1="140" x2="405" y2="290"/>
+      <line x1="430" y1="140" x2="430" y2="290"/>
+      <line x1="455" y1="140" x2="455" y2="290"/>
+      <line x1="480" y1="140" x2="480" y2="290"/>
+      <line x1="505" y1="140" x2="505" y2="290"/>
+    </g>
+    
+    <!-- Segments generated from buffered data -->
+    <line x1="400" y1="170" x2="450" y2="160" class="segment-thick"/>
+    <line x1="455" y1="165" x2="510" y2="210" class="segment-thick"/>
+    <line x1="515" y1="220" x2="520" y2="280" class="segment-thick"/>
+    
+    <!-- Extended segments reaching into buffer -->
+    <line x1="390" y1="175" x2="520" y2="225" stroke="#ff6b6b" stroke-width="1.5" opacity="0.5" stroke-dasharray="2,2"/>
+    
+    <text x="455" y="330" text-anchor="middle" class="tile-label">CONREC works with full</text>
+    <text x="455" y="345" text-anchor="middle" class="tile-label">buffered grid (68×68)</text>
+    <text x="455" y="360" text-anchor="middle" class="tile-label">generates all segments</text>
+  </g>
+
+  <!-- Phase 3: Clipping -->
+  <g id="phase3">
+    <text x="800" y="95" class="section-title">Phase 3: Clip Geometries to Tile Bounds</text>
+    
+    <!-- Full segment set from CONREC -->
+    <rect x="760" y="140" width="150" height="150" class="tile-buffered"/>
+    
+    <!-- Core tile boundary -->
+    <rect x="790" y="165" width="90" height="90" fill="none" stroke="#00ff00" stroke-width="2.5"/>
+    
+    <!-- Segments (some in buffer, some in core) -->
+    <line x1="770" y1="170" x2="850" y2="160" class="segment-thick" opacity="0.7"/>
+    <line x1="790" y1="165" x2="880" y2="210" stroke="#00ff00" stroke-width="2.5"/>
+    <line x1="880" y1="210" x2="885" y2="260" stroke="#00ff00" stroke-width="2.5"/>
+    
+    <!-- Clipping artifact zones -->
+    <circle cx="790" cy="165" r="8" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    <circle cx="880" cy="260" r="8" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    
+    <!-- Clipping lines -->
+    <line x1="790" y1="140" x2="790" y2="255" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="4,4"/>
+    <line x1="880" y1="140" x2="880" y2="255" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="4,4"/>
+    
+    <text x="1050" y="170" class="tile-label" style="fill: #ff6b6b;">⚠ Clipping</text>
+    <text x="1050" y="185" class="tile-label" style="fill: #ff6b6b;">artifacts</text>
+    <text x="1050" y="200" class="tile-label" style="fill: #ff6b6b;">at boundaries</text>
+    
+    <text x="835" y="330" text-anchor="middle" class="tile-label">Geometries clipped to</text>
+    <text x="835" y="345" text-anchor="middle" class="tile-label">original tile bounds</text>
+    <text x="835" y="360" text-anchor="middle" class="tile-label">using geometric intersection</text>
+  </g>
+
+  <!-- Phase 4: Post-Processing Stitching -->
+  <g id="phase4">
+    <text x="50" y="520" class="section-title">Phase 4: Post-Processing Stitching (When All Tiles Ready)</text>
+    
+    <!-- Two adjacent clipped tiles -->
+    <g id="tile-pair">
+      <!-- Tile 1 -->
+      <rect x="80" y="560" width="120" height="120" class="tile-core"/>
+      <line x1="80" y1="590" x2="200" y2="590" stroke="#333" stroke-width="0.5"/>
+      <line x1="80" y1="620" x2="200" y2="620" stroke="#333" stroke-width="0.5"/>
+      <line x1="110" y1="560" x2="110" y2="680" stroke="#333" stroke-width="0.5"/>
+      <line x1="140" y1="560" x2="140" y2="680" stroke="#333" stroke-width="0.5"/>
+      <line x1="170" y1="560" x2="170" y2="680" stroke="#333" stroke-width="0.5"/>
+      
+      <!-- Segments in tile 1 -->
+      <line x1="100" y1="590" x2="150" y2="580" class="segment-thick"/>
+      <line x1="155" y1="585" x2="190" y2="630" class="segment-thick"/>
+      
+      <text x="140" y="705" text-anchor="middle" class="tile-label">Tile 1</text>
+    </g>
+    
+    <!-- Tile 2 -->
+    <g id="tile-pair2">
+      <rect x="220" y="560" width="120" height="120" class="tile-core"/>
+      <line x1="220" y1="590" x2="340" y2="590" stroke="#333" stroke-width="0.5"/>
+      <line x1="220" y1="620" x2="340" y2="620" stroke="#333" stroke-width="0.5"/>
+      <line x1="250" y1="560" x2="250" y2="680" stroke="#333" stroke-width="0.5"/>
+      <line x1="280" y1="560" x2="280" y2="680" stroke="#333" stroke-width="0.5"/>
+      <line x1="310" y1="560" x2="310" y2="680" stroke="#333" stroke-width="0.5"/>
+      
+      <!-- Segments in tile 2 -->
+      <line x1="220" y1="585" x2="270" y2="575" class="segment-thick"/>
+      <line x1="275" y1="580" x2="330" y2="620" class="segment-thick"/>
+      
+      <text x="280" y="705" text-anchor="middle" class="tile-label">Tile 2</text>
+    </g>
+    
+    <!-- Boundary -->
+    <line x1="200" y1="560" x2="200" y2="680" class="boundary"/>
+    
+    <!-- Issues highlighted -->
+    <circle cx="200" cy="590" r="15" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    <text x="360" y="595" class="tile-label" style="fill: #ff6b6b;">Gap!</text>
+    
+    <!-- Stitch annotation -->
+    <path d="M 340 620 L 430 620" class="arrow"/>
+    <rect x="450" y="600" width="130" height="40" class="highlight-box"/>
+    <text x="515" y="625" text-anchor="middle" class="step-label">Stitching phase</text>
+  </g>
+
+  <!-- Why It Fails in JavaScript -->
+  <g id="why-fails">
+    <text x="600" y="520" class="section-title">Why This Approach Struggles in JavaScript</text>
+    
+    <!-- Issue 1: Clipping accuracy -->
+    <rect x="560" y="560" width="330" height="160" class="box"/>
+    <text x="725" y="585" text-anchor="middle" class="step-label" style="fill: #ff6b6b;">Problem 1: Geometric Clipping</text>
+    
+    <text x="575" y="610" class="tile-label">✗ Complex polygon-rectangle clipping</text>
+    <text x="575" y="628" class="tile-label">✗ Numerical precision issues with</text>
+    <text x="585" y="643" class="tile-label">  geographic coordinates</text>
+    <text x="575" y="661" class="tile-label">✗ JavaScript libraries (turf.js, jsts)</text>
+    <text x="585" y="676" class="tile-label">  lack GEOS robustness</text>
+    <text x="575" y="694" class="tile-label">✗ Degenerate polygon outputs</text>
+    
+    <!-- Issue 2: Stitching complexity -->
+    <rect x="920" y="560" width="330" height="160" class="box"/>
+    <text x="1085" y="585" text-anchor="middle" class="step-label" style="fill: #ff6b6b;">Problem 2: Post-Stitching</text>
+    
+    <text x="935" y="610" class="tile-label">✗ All tiles must be available</text>
+    <text x="935" y="628" class="tile-label">✗ Cannot process progressively</text>
+    <text x="935" y="646" class="tile-label">✗ Requires complete segment set</text>
+    <text x="935" y="664" class="tile-label">✗ Memory overhead holding all</text>
+    <text x="945" y="679" class="tile-label">  clipped results</text>
+    <text x="935" y="697" class="tile-label">✗ Global merging complex</text>
+  </g>
+
+  <!-- Performance Impact -->
+  <g id="performance">
+    <text x="50" y="800" class="section-title">Performance &amp; Quality Impact</text>
+    
+    <!-- Performance metrics -->
+    <rect x="20" y="830" width="450" height="200" class="box"/>
+    <text x="245" y="860" text-anchor="middle" class="step-label" style="fill: #00d4ff;">Performance Metrics</text>
+    
+    <rect x="40" y="885" width="410" height="130" fill="#1a2a2e" stroke="#333" stroke-width="1" rx="3"/>
+    <text x="245" y="910" text-anchor="middle" class="tile-label" style="fill: #ff6b6b; font-weight: bold;">Processing Time: 1.77s (3.3× slower)</text>
+    <text x="55" y="935" class="tile-label">• CONREC on buffered data: moderate overhead</text>
+    <text x="55" y="953" class="tile-label">• Geometric clipping: expensive (~1.2s per tile)</text>
+    <text x="55" y="971" class="tile-label">  - 18 tiles × 0.065s clipping avg = 1.17s</text>
+    <text x="55" y="989" class="tile-label">• Post-stitching: complex spatial queries</text>
+    
+    <!-- Quality metrics -->
+    <rect x="500" y="830" width="450" height="200" class="box"/>
+    <text x="725" y="860" text-anchor="middle" class="step-label" style="fill: #00d4ff;">Quality Metrics</text>
+    
+    <rect x="520" y="885" width="410" height="130" fill="#1a2a2e" stroke="#333" stroke-width="1" rx="3"/>
+    <text x="725" y="910" text-anchor="middle" class="tile-label" style="fill: #ff6b6b; font-weight: bold;">Boundary Continuity: 0.4% (WORST)</text>
+    <text x="535" y="935" class="tile-label">• Geometric Accuracy: Hausdorff = 0.0072 (BEST)</text>
+    <text x="535" y="953" class="tile-label">• Artifacts: 74 (HIGHEST)</text>
+    <text x="535" y="971" class="tile-label">• Clipping produces jagged/degenerate boundaries</text>
+    <text x="535" y="989" class="tile-label">• Stitching creates artificial discontinuities</text>
+    
+    <!-- Library limitation -->
+    <rect x="980" y="830" width="470" height="200" class="box" stroke="#ff6b6b" stroke-width="2"/>
+    <text x="1215" y="860" text-anchor="middle" class="step-label" style="fill: #ff6b6b;">Why JavaScript is the Problem</text>
+    
+    <rect x="1000" y="885" width="430" height="130" fill="#2a1a1a" stroke="#333" stroke-width="1" rx="3"/>
+    <text x="1215" y="910" text-anchor="middle" class="tile-label">Desktop GIS Success vs. Browser Failure</text>
+    <text x="1015" y="935" class="tile-label">QGIS/GDAL use GEOS (C++, 30+ years dev)</text>
+    <text x="1015" y="953" class="tile-label">JavaScript has: turf.js (good for analysis)</text>
+    <text x="1015" y="971" class="tile-label">              jsts (port of JTS, less robust)</text>
+    <text x="1015" y="989" class="tile-label">Neither handles edge cases in geographic</text>
+    <text x="1025" y="1004" class="tile-label">clipping (poles, antimeridian)</text>
+  </g>
+</svg>

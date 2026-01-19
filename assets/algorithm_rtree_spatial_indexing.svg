@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" width="1400" height="900">
+  <defs>
+    <style>
+      .title { font-size: 28px; font-weight: bold; fill: #00d4ff; }
+      .subtitle { font-size: 16px; fill: #aaa; }
+      .section-title { font-size: 18px; font-weight: bold; fill: #00d4ff; }
+      .label { font-size: 13px; fill: #ccc; font-family: monospace; }
+      .value { font-size: 11px; fill: #999; }
+      .segment-line { stroke: #00d4ff; stroke-width: 2; }
+      .bounding-box { stroke: #ffa500; stroke-width: 1.5; fill: none; stroke-dasharray: 4,4; }
+      .node-box { stroke: #90ee90; stroke-width: 2; fill: none; }
+      .tree-node { fill: #1a3a3a; stroke: #00d4ff; stroke-width: 1.5; }
+      .tree-text { font-size: 10px; fill: #00ff00; font-family: monospace; }
+      .tree-edge { stroke: #666; stroke-width: 1; }
+      .highlight { fill: #ff6b6b; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="900" fill="#0f0f1e"/>
+
+  <!-- Title -->
+  <text x="700" y="35" text-anchor="middle" class="title">Stage 2: R-Tree Spatial Indexing</text>
+  <text x="700" y="60" text-anchor="middle" class="subtitle">Organizing segments for efficient connectivity queries</text>
+
+  <!-- Left Panel: Grid with Segments -->
+  <g id="left-panel">
+    <text x="50" y="95" class="section-title">1. Raw CONREC Segments</text>
+    
+    <!-- Grid background -->
+    <rect x="20" y="110" width="280" height="280" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+    
+    <!-- Grid cells -->
+    <g stroke="#333" stroke-width="0.5">
+      <line x1="20" y1="185" x2="300" y2="185"/>
+      <line x1="20" y1="260" x2="300" y2="260"/>
+      <line x1="95" y1="110" x2="95" y2="390"/>
+      <line x1="170" y1="110" x2="170" y2="390"/>
+      <line x1="245" y1="110" x2="245" y2="390"/>
+    </g>
+    
+    <!-- Segments (disconnected) -->
+    <line x1="40" y1="150" x2="80" y2="140" class="segment-line" stroke-width="2.5"/>
+    <line x1="85" y1="160" x2="110" y2="190" class="segment-line" stroke-width="2.5"/>
+    <line x1="120" y1="200" x2="140" y2="240" class="segment-line" stroke-width="2.5"/>
+    <line x1="155" y1="250" x2="190" y2="280" class="segment-line" stroke-width="2.5"/>
+    <line x1="200" y1="300" x2="260" y2="310" class="segment-line" stroke-width="2.5"/>
+    <line x1="250" y1="330" x2="280" y2="360" class="segment-line" stroke-width="2.5"/>
+    
+    <!-- Segment endpoints -->
+    <circle cx="40" cy="150" r="3" fill="#00ff00"/>
+    <circle cx="80" cy="140" r="3" fill="#00ff00"/>
+    <circle cx="85" cy="160" r="3" fill="#00ff00"/>
+    <circle cx="110" cy="190" r="3" fill="#00ff00"/>
+    
+    <!-- Bounding boxes for segments -->
+    <rect x="35" y="135" width="50" height="20" class="bounding-box"/>
+    <rect x="80" y="155" width="35" height="40" class="bounding-box"/>
+    <rect x="115" y="195" width="30" height="50" class="bounding-box"/>
+    <rect x="150" y="245" width="45" height="40" class="bounding-box"/>
+    
+    <text x="160" y="410" text-anchor="middle" class="label">Unordered segments</text>
+    <text x="160" y="430" text-anchor="middle" class="label">with minimal bounding</text>
+    <text x="160" y="450" text-anchor="middle" class="label">rectangles (MBRs)</text>
+  </g>
+
+  <!-- Middle Panel: R-Tree Structure -->
+  <g id="middle-panel">
+    <text x="380" y="95" class="section-title">2. R-Tree Structure</text>
+    
+    <!-- Root node -->
+    <rect x="340" y="130" width="80" height="40" class="tree-node"/>
+    <text x="380" y="158" text-anchor="middle" class="tree-text">ROOT</text>
+    
+    <!-- Internal nodes -->
+    <rect x="290" y="220" width="70" height="35" class="tree-node"/>
+    <text x="325" y="241" text-anchor="middle" class="tree-text">Node L</text>
+    
+    <rect x="390" y="220" width="70" height="35" class="tree-node"/>
+    <text x="425" y="241" text-anchor="middle" class="tree-text">Node R</text>
+    
+    <!-- Leaf nodes -->
+    <rect x="265" y="310" width="60" height="30" class="tree-node"/>
+    <text x="295" y="328" text-anchor="middle" class="tree-text">Leaf 1</text>
+    
+    <rect x="350" y="310" width="60" height="30" class="tree-node"/>
+    <text x="380" y="328" text-anchor="middle" class="tree-text">Leaf 2</text>
+    
+    <rect x="435" y="310" width="60" height="30" class="tree-node"/>
+    <text x="465" y="328" text-anchor="middle" class="tree-text">Leaf 3</text>
+    
+    <!-- Tree edges -->
+    <line x1="365" y1="170" x2="325" y2="220" class="tree-edge"/>
+    <line x1="395" y1="170" x2="425" y2="220" class="tree-edge"/>
+    <line x1="310" y1="255" x2="295" y2="310" class="tree-edge"/>
+    <line x1="340" y1="255" x2="380" y2="310" class="tree-edge"/>
+    <line x1="425" y1="255" x2="465" y2="310" class="tree-edge"/>
+    
+    <!-- MBR boxes at each level -->
+    <rect x="260" y="115" width="240" height="260" class="bounding-box" stroke="#ffa500" stroke-width="2"/>
+    <text x="270" y="380" class="value">Root MBR</text>
+    
+    <rect x="275" y="185" width="100" height="165" class="bounding-box" stroke="#ff9999" stroke-width="1.5"/>
+    <rect x="375" y="185" width="100" height="165" class="bounding-box" stroke="#ff9999" stroke-width="1.5"/>
+  </g>
+
+  <!-- Right Panel: Query Operation -->
+  <g id="right-panel">
+    <text x="900" y="95" class="section-title">3. Point Query (Find Neighbors)</text>
+    
+    <!-- Query point -->
+    <circle cx="950" cy="200" r="8" class="highlight"/>
+    <text x="950" y="235" text-anchor="middle" class="label">Query Point</text>
+    <text x="950" y="250" text-anchor="middle" class="label">(x, y)</text>
+    
+    <!-- Search radius -->
+    <circle cx="950" cy="200" r="45" fill="none" stroke="#90ee90" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="1000" y="195" class="label">ε tolerance</text>
+    
+    <!-- Grid representation -->
+    <rect x="850" y="300" width="200" height="200" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+    
+    <!-- Grid lines -->
+    <g stroke="#333" stroke-width="0.5">
+      <line x1="850" y1="350" x2="1050" y2="350"/>
+      <line x1="850" y1="400" x2="1050" y2="400"/>
+      <line x1="900" y1="300" x2="900" y2="500"/>
+      <line x1="950" y1="300" x2="950" y2="500"/>
+      <line x1="1000" y1="300" x2="1000" y2="500"/>
+    </g>
+    
+    <!-- Segments in grid -->
+    <line x1="860" y1="330" x2="890" y2="320" class="segment-line" stroke-width="2"/>
+    <line x1="910" y1="340" x2="940" y2="370" class="segment-line" stroke-width="2"/>
+    <line x1="960" y1="380" x2="1000" y2="420" class="segment-line" stroke-width="2"/>
+    <line x1="1010" y1="430" x2="1040" y2="460" class="segment-line" stroke-width="2"/>
+    
+    <!-- Segment endpoints -->
+    <circle cx="860" cy="330" r="2.5" fill="#00ff00"/>
+    <circle cx="890" cy="320" r="2.5" fill="#00ff00"/>
+    <circle cx="910" cy="340" r="2.5" fill="#00ff00"/>
+    <circle cx="940" cy="370" r="2.5" fill="#00ff00"/>
+    <circle cx="960" cy="380" r="2.5" fill="#00ff00"/>
+    <circle cx="1000" cy="420" r="2.5" fill="#00ff00"/>
+    
+    <!-- Highlighted candidates -->
+    <circle cx="940" cy="370" r="6" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    <circle cx="960" cy="380" r="6" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    
+    <text x="950" y="530" text-anchor="middle" class="label">Tree traversal finds</text>
+    <text x="950" y="545" text-anchor="middle" class="label">all segments within ε</text>
+    <text x="950" y="560" text-anchor="middle" class="label">in O(log n) time</text>
+  </g>
+
+  <!-- Algorithm complexity section -->
+  <g id="complexity">
+    <text x="50" y="560" class="section-title">R-Tree Operations Complexity</text>
+    
+    <!-- Insert operation -->
+    <rect x="20" y="580" width="300" height="140" fill="#1a2a3a" stroke="#333" stroke-width="1" rx="4"/>
+    <text x="170" y="605" text-anchor="middle" class="label" style="fill: #00ff00;">Insert Segment</text>
+    <text x="35" y="630" class="value">• Find leaf node containing MBR</text>
+    <text x="35" y="650" class="value">• Add segment to leaf</text>
+    <text x="35" y="670" class="value">• Propagate MBR updates up tree</text>
+    <text x="35" y="690" class="value">• Time: O(log n), Space: O(n)</text>
+    
+    <!-- Point query operation -->
+    <rect x="350" y="580" width="300" height="140" fill="#1a2a3a" stroke="#333" stroke-width="1" rx="4"/>
+    <text x="500" y="605" text-anchor="middle" class="label" style="fill: #00ff00;">Point Query</text>
+    <text x="365" y="630" class="value">• Start at root, find overlapping</text>
+    <text x="365" y="645" class="value">  children with query point</text>
+    <text x="365" y="665" class="value">• Recursively search subtrees</text>
+    <text x="365" y="685" class="value">• Time: O(log n) avg, Space: O(k)</text>
+    <text x="365" y="705" class="value">  where k = result count</text>
+    
+    <!-- Range query operation -->
+    <rect x="680" y="580" width="300" height="140" fill="#1a2a3a" stroke="#333" stroke-width="1" rx="4"/>
+    <text x="830" y="605" text-anchor="middle" class="label" style="fill: #00ff00;">Range Query</text>
+    <text x="695" y="630" class="value">• Find all segments within</text>
+    <text x="695" y="645" class="value">  rectangular region</text>
+    <text x="695" y="665" class="value">• Similar to point query but with</text>
+    <text x="695" y="685" class="value">  larger search area</text>
+    <text x="695" y="705" class="value">• Time: O(log n + k)</text>
+    
+    <!-- Brute force comparison -->
+    <rect x="1020" y="580" width="340" height="140" fill="#2a1a1a" stroke="#663333" stroke-width="1" rx="4"/>
+    <text x="1190" y="605" text-anchor="middle" class="label" style="fill: #ff6b6b;">Brute Force (No Index)</text>
+    <text x="1035" y="630" class="value">• Check all n segments</text>
+    <text x="1035" y="650" class="value">• for each query point</text>
+    <text x="1035" y="670" class="value">• Time per query: O(n)</text>
+    <text x="1035" y="690" class="value">• For assembly: O(m·n)</text>
+    <text x="1035" y="710" class="value">  m = segments, n = queries</text>
+  </g>
+
+  <!-- Bottom: Why R-Tree matters -->
+  <g id="why-matters">
+    <text x="50" y="770" class="section-title">Why R-Tree is Critical for Polygon Formation</text>
+    
+    <rect x="20" y="790" width="1360" height="85" fill="#1a2a2a" stroke="#00d4ff" stroke-width="1.5" rx="4"/>
+    <text x="700" y="815" text-anchor="middle" class="label" style="fill: #00d4ff;">Without R-Tree:</text>
+    <text x="40" y="840" class="value">• Polygon formation requires finding connected segments at boundaries (O(n²) brute force)</text>
+    <text x="40" y="858" class="value">• For 10,000 segments: 100M comparisons per contour level → slow and memory intensive</text>
+    
+    <text x="700" y="815" text-anchor="middle" class="label" style="fill: #90ee90;">With R-Tree:</text>
+    <text x="700" y="840" class="value">• Lookup connected segments: O(log n) for each endpoint ≈ 14 tree traversals for 10,000 segments</text>
+    <text x="700" y="858" class="value">• Total polygon assembly: O(m log n) where m = segments → typically 100-1000× speedup</text>
+  </g>
+</svg>

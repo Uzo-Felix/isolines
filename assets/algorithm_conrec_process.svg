@@ -1,0 +1,409 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <defs>
+    <style>
+      .title { font-size: 28px; font-weight: bold; fill: #00d4ff; }
+      .subtitle { font-size: 14px; fill: #aaa; }
+      .section-title { font-size: 16px; font-weight: bold; fill: #00d4ff; }
+      .step-label { font-size: 12px; fill: #ccc; font-weight: bold; }
+      .label { font-size: 11px; fill: #ccc; font-family: monospace; }
+      .value { font-size: 10px; fill: #999; }
+      .code { font-size: 9px; fill: #aaa; font-family: monospace; }
+      .grid-value { font-size: 10px; fill: #00ff00; font-family: monospace; font-weight: bold; }
+      .grid-above { fill: #ff6b6b; }
+      .grid-below { fill: #4ecdc4; }
+      .grid-on { fill: #95e1d3; }
+      .grid-line { stroke: #333; stroke-width: 0.5; }
+      .cell-outline { stroke: #666; stroke-width: 1.5; fill: none; }
+      .cell-active { stroke: #ffa500; stroke-width: 2; fill: #ffaa00; fill-opacity: 0.1; }
+      .segment { stroke: #00d4ff; stroke-width: 2.5; }
+      .interpolated-point { fill: #00ff00; stroke: #00ff00; stroke-width: 1; }
+      .corner-point { fill: #ccc; }
+      .arrow { stroke: #ffa500; stroke-width: 2; marker-end: url(#arrowhead); }
+      .arrow-thick { stroke: #ffa500; stroke-width: 3; marker-end: url(#arrowhead); }
+      .box { fill: #1a1a2e; stroke: #333; stroke-width: 1; }
+      .highlight-box { fill: #2a3a2a; stroke: #90ee90; stroke-width: 1.5; }
+      .warning-box { fill: #3a2a1a; stroke: #ffaa00; stroke-width: 1.5; }
+      .code-box { fill: #0a0a1e; stroke: #00d4ff; stroke-width: 1; font-family: monospace; }
+      .lookup-table { fill: #1a2a3a; stroke: #333; stroke-width: 1; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#ffa500"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1100" fill="#0f0f1e"/>
+
+  <!-- Title -->
+  <text x="800" y="35" text-anchor="middle" class="title">CONREC Algorithm: Segment Generation Process</text>
+  <text x="800" y="60" text-anchor="middle" class="subtitle">Complete workflow from grid input to segment output</text>
+
+  <!-- Section 1: Input Grid -->
+  <g id="input-section">
+    <text x="50" y="100" class="section-title">Step 1: Input Grid</text>
+    
+    <!-- Grid with values -->
+    <rect x="50" y="120" width="280" height="240" class="box"/>
+    
+    <!-- Grid cells and values -->
+    <g class="grid-line">
+      <line x1="50" y1="160" x2="330" y2="160"/>
+      <line x1="50" y1="200" x2="330" y2="200"/>
+      <line x1="50" y1="240" x2="330" y2="240"/>
+      <line x1="50" y1="280" x2="330" y2="280"/>
+      <line x1="90" y1="120" x2="90" y2="360"/>
+      <line x1="130" y1="120" x2="130" y2="360"/>
+      <line x1="170" y1="120" x2="170" y2="360"/>
+      <line x1="210" y1="120" x2="210" y2="360"/>
+      <line x1="250" y1="120" x2="250" y2="360"/>
+      <line x1="290" y1="120" x2="290" y2="360"/>
+    </g>
+    
+    <!-- Grid values -->
+    <text x="70" y="155" class="grid-value">98.2</text>
+    <text x="110" y="155" class="grid-value">99.5</text>
+    <text x="150" y="155" class="grid-value">100.1</text>
+    <text x="190" y="155" class="grid-value">101.0</text>
+    
+    <text x="70" y="195" class="grid-value">99.1</text>
+    <text x="110" y="195" class="grid-value">100.0</text>
+    <text x="150" y="195" class="grid-value">100.8</text>
+    <text x="190" y="195" class="grid-value">101.5</text>
+    
+    <text x="70" y="235" class="grid-value">100.5</text>
+    <text x="110" y="235" class="grid-value">101.2</text>
+    <text x="150" y="235" class="grid-value">102.0</text>
+    <text x="190" y="235" class="grid-value">102.3</text>
+    
+    <text x="70" y="275" class="grid-value">101.8</text>
+    <text x="110" y="275" class="grid-value">102.5</text>
+    <text x="150" y="275" class="grid-value">103.1</text>
+    <text x="190" y="275" class="grid-value">103.8</text>
+    
+    <!-- Contour level line -->
+    <line x1="40" y1="390" x2="330" y2="390" stroke="#ffaa00" stroke-width="2" stroke-dasharray="4,4"/>
+    <text x="50" y="410" class="label">Contour Level L = 100.47 kPa</text>
+  </g>
+
+  <!-- Section 2: Cell Classification -->
+  <g id="classification-section">
+    <text x="420" y="100" class="section-title">Step 2: Cell Classification</text>
+    
+    <!-- Example cell being processed -->
+    <rect x="400" y="120" width="260" height="240" class="box"/>
+    
+    <!-- Cell grid -->
+    <g class="grid-line">
+      <line x1="400" y1="170" x2="660" y2="170"/>
+      <line x1="400" y1="220" x2="660" y2="220"/>
+      <line x1="400" y1="270" x2="660" y2="270"/>
+      <line x1="430" y1="120" x2="430" y2="310"/>
+      <line x1="495" y1="120" x2="495" y2="310"/>
+      <line x1="560" y1="120" x2="560" y2="310"/>
+    </g>
+    
+    <!-- Cell corners highlighted -->
+    <rect x="430" y="170" width="65" height="50" class="cell-active"/>
+    
+    <!-- Corner values and classifications -->
+    <text x="435" y="165" class="grid-value" style="fill: #ff6b6b;">99.5</text>
+    <text x="490" y="165" class="grid-value" style="fill: #ff6b6b;">100.1</text>
+    <text x="435" y="210" class="grid-value" style="fill: #4ecdc4;">100.0</text>
+    <text x="490" y="210" class="grid-value" style="fill: #90ee90;">100.8</text>
+    
+    <!-- Classifications -->
+    <text x="445" y="260" class="label">Classification:</text>
+    <text x="445" y="280" class="value">z0 = 99.5  → &lt; L  → (−)</text>
+    <text x="445" y="298" class="value">z1 = 100.1 → &gt; L  → (+)</text>
+    <text x="445" y="316" class="value">z2 = 100.0 → &lt; L  → (−)</text>
+    <text x="445" y="334" class="value">z3 = 100.8 → &gt; L  → (+)</text>
+    
+    <!-- Configuration code -->
+    <rect x="420" y="350" width="240" height="40" class="highlight-box"/>
+    <text x="540" y="368" text-anchor="middle" class="label" style="fill: #00ff00;">Config: (−, +, −, +)</text>
+    <text x="540" y="385" text-anchor="middle" class="label" style="fill: #ffa500;">→ 2 edge crossings</text>
+  </g>
+
+  <!-- Section 3: Lookup Table -->
+  <g id="lookup-section">
+    <text x="800" y="100" class="section-title">Step 3: Lookup Configuration</text>
+    
+    <!-- Lookup table -->
+    <rect x="780" y="120" width="320" height="240" class="lookup-table"/>
+    
+    <!-- Table header -->
+    <rect x="780" y="120" width="320" height="25" fill="#2a4a5a"/>
+    <text x="790" y="140" class="label" style="fill: #00d4ff;">Configuration</text>
+    <text x="940" y="140" class="label" style="fill: #00d4ff;">Action</text>
+    
+    <!-- Table rows -->
+    <line x1="780" y1="145" x2="1100" y2="145" stroke="#333" stroke-width="1"/>
+    <text x="790" y="165" class="code">(+,+,+,+)</text>
+    <text x="920" y="165" class="code">No segment</text>
+    
+    <line x1="780" y1="170" x2="1100" y2="170" stroke="#333" stroke-width="0.5"/>
+    <text x="790" y="190" class="code">(−,−,−,−)</text>
+    <text x="920" y="190" class="code">No segment</text>
+    
+    <line x1="780" y1="195" x2="1100" y2="195" stroke="#333" stroke-width="0.5"/>
+    <text x="790" y="215" class="code">(+,−,+,−)</text>
+    <text x="920" y="215" class="code">2 segments</text>
+    
+    <line x1="780" y1="220" x2="1100" y2="220" stroke="#333" stroke-width="0.5"/>
+    <text x="790" y="240" class="code">(−,+,−,+)</text>
+    <text x="895" y="240" class="code" style="fill: #90ee90;">✓ 2 segments</text>
+    
+    <line x1="780" y1="245" x2="1100" y2="245" stroke="#333" stroke-width="0.5"/>
+    <text x="790" y="265" class="code">(+,−,−,+)</text>
+    <text x="920" y="265" class="code">1 or 2 segments</text>
+    
+    <line x1="780" y1="270" x2="1100" y2="270" stroke="#333" stroke-width="0.5"/>
+    <text x="790" y="290" class="code">(+,+,−,−)</text>
+    <text x="920" y="290" class="code">1 segment</text>
+    
+    <line x1="780" y1="295" x2="1100" y2="295" stroke="#333" stroke-width="0.5"/>
+    <text x="790" y="315" class="code">... (16 total)</text>
+    <text x="920" y="315" class="code">varies</text>
+    
+    <!-- Note -->
+    <rect x="800" y="330" width="300" height="40" class="warning-box"/>
+    <text x="950" y="350" text-anchor="middle" class="value">Uses pre-computed lookup table</text>
+    <text x="950" y="365" text-anchor="middle" class="value">for O(1) configuration lookup</text>
+  </g>
+
+  <!-- Section 4: Interpolation -->
+  <g id="interpolation-section">
+    <text x="1200" y="100" class="section-title">Step 4: Interpolate Crossing Points</text>
+    
+    <!-- Edge visualization -->
+    <rect x="1180" y="120" width="340" height="240" class="box"/>
+    
+    <!-- Draw cell edge -->
+    <circle cx="1200" cy="180" r="5" class="corner-point"/>
+    <circle cx="1400" cy="280" r="5" class="corner-point"/>
+    <line x1="1200" y1="180" x2="1400" y2="280" stroke="#ccc" stroke-width="2"/>
+    
+    <!-- Values at endpoints -->
+    <text x="1190" y="190" class="label">z₁ = 99.5</text>
+    <text x="1390" y="295" class="label">z₂ = 100.8</text>
+    
+    <!-- Contour level -->
+    <line x1="1170" y1="230" x2="1430" y2="230" stroke="#ffaa00" stroke-width="2" stroke-dasharray="3,3"/>
+    <text x="1440" y="235" class="label" style="fill: #ffaa00;">L = 100.47</text>
+    
+    <!-- Interpolation point -->
+    <circle cx="1295" cy="232" r="4" class="interpolated-point"/>
+    <text x="1295" y="255" text-anchor="middle" class="label">Intersection</text>
+    <text x="1295" y="270" text-anchor="middle" class="label">point p</text>
+    
+    <!-- Formula -->
+    <rect x="1200" y="290" width="280" height="70" class="highlight-box"/>
+    <text x="1340" y="310" text-anchor="middle" class="label" style="fill: #00d4ff;">Interpolation Formula</text>
+    <text x="1220" y="330" class="code" style="fill: #90ee90;">t = (L - z₁) / (z₂ - z₁)</text>
+    <text x="1220" y="348" class="code" style="fill: #90ee90;">p = p₁ + t·(p₂ - p₁)</text>
+    <text x="1340" y="365" text-anchor="middle" class="value">Linear interpolation</text>
+  </g>
+
+  <!-- Section 5: Algorithm Loop -->
+  <g id="algorithm-loop">
+    <text x="50" y="420" class="section-title">Step 5: Algorithm Loop (Pseudocode)</text>
+    
+    <rect x="20" y="440" width="560" height="320" class="code-box"/>
+    
+    <!-- Algorithm text -->
+    <text x="40" y="465" class="code" style="fill: #00d4ff; font-weight: bold;">FOR each cell (i,j) in grid:</text>
+    <text x="60" y="485" class="code" style="fill: #aaa;">  v ← [value at 4 corners]</text>
+    <text x="60" y="503" class="code" style="fill: #aaa;">  config ← classify_cell(v, L)</text>
+    <text x="60" y="521" class="code" style="fill: #aaa;">  IF config indicates crossing:</text>
+    
+    <text x="85" y="541" class="code" style="fill: #ccc;">    FOR each edge crossing:</text>
+    <text x="110" y="559" class="code" style="fill: #ccc;">      p ← interpolate(edge, L)</text>
+    <text x="110" y="577" class="code" style="fill: #ccc;">      points ← points ∪ {p}</text>
+    
+    <text x="85" y="597" class="code" style="fill: #ccc;">    segment ← lookup_segments(config)</text>
+    <text x="85" y="615" class="code" style="fill: #ccc;">    FOR each segment in pattern:</text>
+    <text x="110" y="633" class="code" style="fill: #ccc;">      Create segment from points</text>
+    <text x="110" y="651" class="code" style="fill: #ccc;">      segments ← segments ∪ {seg}</text>
+    
+    <text x="60" y="671" class="code" style="fill: #aaa;">  ENDIF</text>
+    <text x="40" y="691" class="code" style="fill: #aaa;">END FOR</text>
+    <text x="40" y="711" class="code" style="fill: #00d4ff; font-weight: bold;">RETURN segments</text>
+    
+    <!-- Complexity note -->
+    <rect x="30" y="730" width="540" height="30" class="highlight-box"/>
+    <text x="300" y="751" text-anchor="middle" class="value" style="fill: #90ee90;">Time Complexity: O(n) where n = number of grid cells</text>
+  </g>
+
+  <!-- Section 6: Output Segments -->
+  <g id="output-section">
+    <text x="650" y="420" class="section-title">Step 6: Output Segments</text>
+    
+    <!-- Output box -->
+    <rect x="630" y="440" width="350" height="320" class="box"/>
+    
+    <!-- Segments visualization -->
+    <svg x="650" y="460" width="310" height="280" viewBox="0 0 310 280">
+      <!-- Grid background -->
+      <rect width="310" height="280" fill="#0a1a2a" stroke="#333" stroke-width="1"/>
+      
+      <!-- Grid cells -->
+      <g stroke="#333" stroke-width="0.5">
+        <line y1="70" x2="310" y2="70"/>
+        <line y1="140" x2="310" y2="140"/>
+        <line y1="210" x2="310" y2="210"/>
+        <line x1="78" y1="0" x2="78" y2="280"/>
+        <line x1="155" y1="0" x2="155" y2="280"/>
+        <line x1="233" y1="0" x2="233" y2="280"/>
+      </g>
+      
+      <!-- Generated segments -->
+      <!-- Segment 1 -->
+      <line x1="40" y1="80" x2="90" y2="50" class="segment" stroke-width="2.5"/>
+      <circle cx="40" cy="80" r="2" class="interpolated-point"/>
+      <circle cx="90" cy="50" r="2" class="interpolated-point"/>
+      
+      <!-- Segment 2 -->
+      <line x1="95" y1="60" x2="150" y2="110" class="segment" stroke-width="2.5"/>
+      <circle cx="95" cy="60" r="2" class="interpolated-point"/>
+      <circle cx="150" cy="110" r="2" class="interpolated-point"/>
+      
+      <!-- Segment 3 -->
+      <line x1="160" y1="100" x2="220" y2="160" class="segment" stroke-width="2.5"/>
+      <circle cx="160" cy="100" r="2" class="interpolated-point"/>
+      <circle cx="220" cy="160" r="2" class="interpolated-point"/>
+      
+      <!-- Segment 4 -->
+      <line x1="90" y1="180" x2="140" y2="220" class="segment" stroke-width="2.5"/>
+      <circle cx="90" cy="180" r="2" class="interpolated-point"/>
+      <circle cx="140" cy="220" r="2" class="interpolated-point"/>
+      
+      <!-- Segment 5 -->
+      <line x1="180" y1="190" x2="240" y2="250" class="segment" stroke-width="2.5"/>
+      <circle cx="180" cy="190" r="2" class="interpolated-point"/>
+      <circle cx="240" cy="250" r="2" class="interpolated-point"/>
+      
+      <!-- Labels -->
+      <text x="155" y="270" text-anchor="middle" class="label" style="font-size: 10px; fill: #aaa;">Unordered segments</text>
+    </svg>
+    
+    <!-- Data structure -->
+    <rect x="650" y="750" width="310" height="60" class="highlight-box"/>
+    <text x="805" y="770" text-anchor="middle" class="label" style="fill: #00ff00;">Output: List of Segments</text>
+    <text x="805" y="788" text-anchor="middle" class="code">S = [(p₁, p₂), (p₃, p₄), ...]</text>
+    <text x="805" y="803" text-anchor="middle" class="value">Raw, disconnected, unordered</text>
+  </g>
+
+  <!-- Section 7: Complete Workflow -->
+  <g id="workflow">
+    <text x="1050" y="420" class="section-title">Step 7: Complete Workflow Summary</text>
+    
+    <!-- Workflow boxes -->
+    <!-- Box 1: Input -->
+    <rect x="1040" y="460" width="140" height="60" class="highlight-box"/>
+    <text x="1110" y="483" text-anchor="middle" class="step-label">1. Input Grid</text>
+    <text x="1110" y="502" text-anchor="middle" class="value">Values + Level L</text>
+    
+    <!-- Arrow 1 -->
+    <path d="M 1180 490 L 1230 490" class="arrow"/>
+    
+    <!-- Box 2: Iterate -->
+    <rect x="1230" y="460" width="140" height="60" class="highlight-box"/>
+    <text x="1300" y="483" text-anchor="middle" class="step-label">2. Iterate Cells</text>
+    <text x="1300" y="502" text-anchor="middle" class="value">For each cell</text>
+    
+    <!-- Arrow 2 -->
+    <path d="M 1300 520 L 1300 560" class="arrow"/>
+    
+    <!-- Box 3: Classify -->
+    <rect x="1230" y="560" width="140" height="60" class="highlight-box"/>
+    <text x="1300" y="583" text-anchor="middle" class="step-label">3. Classify</text>
+    <text x="1300" y="602" text-anchor="middle" class="value">4 corners vs L</text>
+    
+    <!-- Arrow 3 -->
+    <path d="M 1230 590 L 1180 590" class="arrow"/>
+    
+    <!-- Box 4: Lookup -->
+    <rect x="1040" y="560" width="140" height="60" class="highlight-box"/>
+    <text x="1110" y="583" text-anchor="middle" class="step-label">4. Lookup</text>
+    <text x="1110" y="602" text-anchor="middle" class="value">Configuration</text>
+    
+    <!-- Arrow 4 -->
+    <path d="M 1110 620 L 1110 660" class="arrow"/>
+    
+    <!-- Box 5: Interpolate -->
+    <rect x="1040" y="660" width="140" height="60" class="highlight-box"/>
+    <text x="1110" y="683" text-anchor="middle" class="step-label">5. Interpolate</text>
+    <text x="1110" y="702" text-anchor="middle" class="value">Edge crossings</text>
+    
+    <!-- Arrow 5 -->
+    <path d="M 1180 690 L 1230 690" class="arrow"/>
+    
+    <!-- Box 6: Generate -->
+    <rect x="1230" y="660" width="140" height="60" class="highlight-box"/>
+    <text x="1300" y="683" text-anchor="middle" class="step-label">6. Generate</text>
+    <text x="1300" y="702" text-anchor="middle" class="value">Segments</text>
+    
+    <!-- Arrow 6 -->
+    <path d="M 1300 720 L 1300 760" class="arrow"/>
+    
+    <!-- Box 7: Output -->
+    <rect x="1230" y="760" width="140" height="60" class="highlight-box"/>
+    <text x="1300" y="783" text-anchor="middle" class="step-label">7. Output</text>
+    <text x="1300" y="802" text-anchor="middle" class="value">Raw segments</text>
+  </g>
+
+  <!-- Section 8: Key Properties -->
+  <g id="key-properties">
+    <text x="50" y="850" class="section-title">Key Algorithm Properties</text>
+    
+    <!-- Properties grid -->
+    <!-- Efficiency -->
+    <rect x="20" y="870" width="370" height="200" class="box"/>
+    <text x="205" y="895" text-anchor="middle" class="step-label" style="fill: #00d4ff;">Efficiency</text>
+    
+    <text x="40" y="920" class="value">✓ O(n) time complexity</text>
+    <text x="40" y="938" class="value">  (n = grid cells)</text>
+    <text x="40" y="956" class="value">✓ Single pass through grid</text>
+    <text x="40" y="974" class="value">✓ O(1) lookup per cell via table</text>
+    <text x="40" y="992" class="value">✓ Linear interpolation: O(1)</text>
+    <text x="40" y="1010" class="value">✓ No sorting or complex queries</text>
+    <text x="40" y="1028" class="value">✓ Highly parallelizable</text>
+    
+    <!-- Accuracy -->
+    <rect x="420" y="870" width="370" height="200" class="box"/>
+    <text x="605" y="895" text-anchor="middle" class="step-label" style="fill: #00d4ff;">Accuracy</text>
+    
+    <text x="440" y="920" class="value">✓ Linear interpolation ensures</text>
+    <text x="440" y="938" class="value">  exact intersection points</text>
+    <text x="440" y="956" class="value">✓ No approximation in geometry</text>
+    <text x="440" y="974" class="value">✓ Precision limited by grid</text>
+    <text x="440" y="992" class="value">  resolution, not algorithm</text>
+    <text x="440" y="1010" class="value">✓ Handles saddle points</text>
+    <text x="440" y="1028" class="value">  (ambiguous configurations)</text>
+    
+    <!-- Limitations -->
+    <rect x="820" y="870" width="370" height="200" class="box"/>
+    <text x="1005" y="895" text-anchor="middle" class="step-label" style="fill: #ff6b6b;">Limitations</text>
+    
+    <text x="840" y="920" class="value">✗ Requires complete grid</text>
+    <text x="840" y="938" class="value">✗ Cannot process incrementally</text>
+    <text x="840" y="956" class="value">✗ Output is unordered,</text>
+    <text x="840" y="974" class="value">  disconnected segments</text>
+    <text x="840" y="992" class="value">✗ No topology information</text>
+    <text x="840" y="1010" class="value">✗ Post-processing required</text>
+    <text x="840" y="1028" class="value">  for polygon formation</text>
+    
+    <!-- Applicability -->
+    <rect x="1220" y="870" width="340" height="200" class="box"/>
+    <text x="1390" y="895" text-anchor="middle" class="step-label" style="fill: #90ee90;">Applicability</text>
+    
+    <text x="1240" y="920" class="value">✓ Desktop GIS (QGIS, GDAL)</text>
+    <text x="1240" y="938" class="value">✓ Scientific visualization</text>
+    <text x="1240" y="956" class="value">✓ Server-side processing</text>
+    <text x="1240" y="974" class="value">✓ High-performance computing</text>
+    
+    <text x="1240" y="1002" class="value" style="fill: #ff6b6b;">✗ Browser/JavaScript</text>
+    <text x="1240" y="1020" class="value" style="fill: #ff6b6b;">  (with complete grid)</text>
+    <text x="1240" y="1038" class="value" style="fill: #ff6b6b;">✗ Tile-based streaming</text>
+  </g>
+</svg>

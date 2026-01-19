@@ -1,0 +1,286 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <defs>
+    <style>
+      .title { font-size: 28px; font-weight: bold; fill: #00d4ff; }
+      .subtitle { font-size: 14px; fill: #aaa; }
+      .section-title { font-size: 16px; font-weight: bold; fill: #00d4ff; }
+      .step-title { font-size: 13px; font-weight: bold; fill: #90ee90; }
+      .label { font-size: 11px; fill: #ccc; font-family: monospace; }
+      .value { font-size: 10px; fill: #999; }
+      .segment { stroke: #00d4ff; stroke-width: 2; }
+      .endpoint { fill: #00ff00; }
+      .current-point { fill: #ff6b6b; stroke: #ff6b6b; stroke-width: 2; }
+      .connection { stroke: #ffa500; stroke-width: 2; stroke-dasharray: 3,3; }
+      .polygon { fill: #2a6a4a; stroke: #90ee90; stroke-width: 2; opacity: 0.6; }
+      .linestring { stroke: #00d4ff; stroke-width: 2.5; fill: none; }
+      .processed { stroke: #666; stroke-width: 1.5; opacity: 0.4; }
+      .arrow { stroke: #ffa500; stroke-width: 2; marker-end: url(#arrowhead); }
+      .box { fill: #1a1a2e; stroke: #333; stroke-width: 1; }
+      .highlight-box { fill: #2a2a3e; stroke: #ffa500; stroke-width: 1.5; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#ffa500"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1000" fill="#0f0f1e"/>
+
+  <!-- Title -->
+  <text x="800" y="35" text-anchor="middle" class="title">Stage 3: Polygon Formation &amp; Segment Assembly</text>
+  <text x="800" y="60" text-anchor="middle" class="subtitle">Converting raw segments into closed polygons and open linestrings</text>
+
+  <!-- Step 1: Input Segments -->
+  <g id="step1">
+    <text x="50" y="100" class="section-title">Step 1: Unordered Segments (from R-Tree)</text>
+    
+    <rect x="20" y="120" width="340" height="280" class="box"/>
+    
+    <!-- Draw unordered segments -->
+    <line x1="80" y1="180" x2="140" y2="150" class="segment"/>
+    <line x1="145" y1="155" x2="220" y2="200" class="segment"/>
+    <line x1="220" y1="200" x2="280" y2="280" class="segment"/>
+    <line x1="280" y1="280" x2="180" y2="320" class="segment"/>
+    <line x1="180" y1="320" x2="90" y2="260" class="segment"/>
+    <line x1="90" y1="260" x2="80" y2="180" class="segment"/>
+    
+    <!-- Mark endpoints -->
+    <circle cx="80" cy="180" r="3" class="endpoint"/>
+    <circle cx="140" cy="150" r="3" class="endpoint"/>
+    <circle cx="145" cy="155" r="3" class="endpoint"/>
+    <circle cx="220" cy="200" r="3" class="endpoint"/>
+    <circle cx="280" cy="280" r="3" class="endpoint"/>
+    <circle cx="180" cy="320" r="3" class="endpoint"/>
+    <circle cx="90" cy="260" r="3" class="endpoint"/>
+    
+    <!-- Labels -->
+    <text x="60" y="200" class="label">s₁</text>
+    <text x="160" y="130" class="label">s₂</text>
+    <text x="200" y="240" class="label">s₃</text>
+    <text x="220" y="310" class="label">s₄</text>
+    <text x="150" y="340" class="label">s₅</text>
+    <text x="70" y="280" class="label">s₆</text>
+    
+    <text x="190" y="420" text-anchor="middle" class="value">6 disconnected</text>
+    <text x="190" y="435" text-anchor="middle" class="value">segments in</text>
+    <text x="190" y="450" text-anchor="middle" class="value">arbitrary order</text>
+  </g>
+
+  <!-- Step 2: Start Path -->
+  <g id="step2">
+    <text x="430" y="100" class="section-title">Step 2: Initialize Path</text>
+    
+    <rect x="400" y="120" width="340" height="280" class="box"/>
+    
+    <!-- All segments -->
+    <line x1="460" y1="180" x2="520" y2="150" class="processed"/>
+    <line x1="525" y1="155" x2="600" y2="200" class="processed"/>
+    <line x1="600" y1="200" x2="660" y2="280" class="processed"/>
+    <line x1="660" y1="280" x2="560" y2="320" class="processed"/>
+    <line x1="560" y1="320" x2="470" y2="260" class="processed"/>
+    
+    <!-- Highlighted segment -->
+    <line x1="470" y1="260" x2="460" y2="180" class="segment" stroke-width="3"/>
+    <circle cx="470" cy="260" r="3" class="endpoint"/>
+    <circle cx="460" cy="180" r="3" class="endpoint"/>
+    
+    <!-- Path box -->
+    <rect x="410" y="330" width="320" height="50" class="highlight-box"/>
+    <text x="420" y="350" class="label" style="fill: #00ff00;">path = [s₆]</text>
+    <text x="420" y="365" class="label" style="fill: #ffa500;">current = endpoint(s₆)</text>
+    
+    <!-- Markers -->
+    <circle cx="470" cy="260" r="6" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    <text x="520" y="295" class="label" style="fill: #ff6b6b;">← START</text>
+    
+    <text x="570" y="420" text-anchor="middle" class="value">Pick first unprocessed</text>
+    <text x="570" y="435" text-anchor="middle" class="value">segment, start new path</text>
+  </g>
+
+  <!-- Step 3: Find Candidates -->
+  <g id="step3">
+    <text x="810" y="100" class="section-title">Step 3: Query for Candidates</text>
+    
+    <rect x="780" y="120" width="340" height="280" class="box"/>
+    
+    <!-- All segments -->
+    <line x1="840" y1="180" x2="900" y2="150" class="processed"/>
+    <line x1="905" y1="155" x2="980" y2="200" class="processed"/>
+    <line x1="980" y1="200" x2="1040" y2="280" class="processed"/>
+    <line x1="1040" y1="280" x2="940" y2="320" class="processed"/>
+    <line x1="940" y1="320" x2="850" y2="260" class="segment" stroke-width="3"/>
+    
+    <!-- Endpoints -->
+    <circle cx="850" cy="260" r="3" class="endpoint"/>
+    <circle cx="840" cy="180" r="3" class="endpoint"/>
+    
+    <!-- Search region -->
+    <circle cx="840" cy="180" r="30" fill="none" stroke="#90ee90" stroke-width="1.5" stroke-dasharray="3,3"/>
+    
+    <!-- Candidate matches -->
+    <circle cx="840" cy="180" r="6" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    <circle cx="905" cy="155" r="6" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    
+    <!-- Query label -->
+    <text x="1010" y="200" class="label" style="fill: #90ee90;">ε-tolerance</text>
+    <text x="1010" y="215" class="label" style="fill: #90ee90;">query at</text>
+    <text x="1010" y="230" class="label" style="fill: #90ee90;">(840, 180)</text>
+    
+    <!-- Results box -->
+    <rect x="790" y="330" width="320" height="50" class="highlight-box"/>
+    <text x="800" y="350" class="label" style="fill: #00ff00;">candidates = [s₂ endpoint]</text>
+    <text x="800" y="365" class="label" style="fill: #ffa500;">distance ≈ 0.0002° &lt; ε</text>
+    
+    <text x="950" y="420" text-anchor="middle" class="value">Find all segments within</text>
+    <text x="950" y="435" text-anchor="middle" class="value">tolerance ε of current</text>
+    <text x="950" y="450" text-anchor="middle" class="value">endpoint using R-tree</text>
+  </g>
+
+  <!-- Step 4: Extend Path -->
+  <g id="step4">
+    <text x="1190" y="100" class="section-title">Step 4: Extend Path</text>
+    
+    <rect x="1160" y="120" width="380" height="280" class="box"/>
+    
+    <!-- Segments showing extension -->
+    <line x1="1220" y1="200" x2="1280" y2="170" class="segment" stroke-width="3"/>
+    <line x1="1285" y1="175" x2="1360" y2="220" class="segment" stroke-width="3"/>
+    <line x1="1360" y1="220" x2="1420" y2="300" class="processed"/>
+    <line x1="1420" y1="300" x2="1320" y2="340" class="processed"/>
+    <line x1="1320" y1="340" x2="1230" y2="280" class="processed"/>
+    
+    <!-- Endpoints -->
+    <circle cx="1220" cy="200" r="3" class="endpoint"/>
+    <circle cx="1280" cy="170" r="3" class="endpoint"/>
+    <circle cx="1285" cy="175" r="3" class="endpoint"/>
+    <circle cx="1360" cy="220" r="3" class="endpoint"/>
+    
+    <!-- Current endpoint marker -->
+    <circle cx="1360" cy="220" r="6" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    <text x="1450" y="225" class="label" style="fill: #ff6b6b;">current →</text>
+    
+    <!-- Path box -->
+    <rect x="1170" y="330" width="360" height="65" class="highlight-box"/>
+    <text x="1180" y="350" class="label" style="fill: #00ff00;">path = [s₆, s₁, s₂]</text>
+    <text x="1180" y="365" class="label" style="fill: #ffa500;">current = (1360, 220)</text>
+    <text x="1180" y="380" class="label" style="fill: #ffa500;">processed = {s₆, s₁, s₂}</text>
+    
+    <text x="1350" y="420" text-anchor="middle" class="value">Append matched segment</text>
+    <text x="1350" y="435" text-anchor="middle" class="value">to path, update current</text>
+    <text x="1350" y="450" text-anchor="middle" class="value">to opposite endpoint</text>
+  </g>
+
+  <!-- Middle section: Loop visualization -->
+  <g id="loop-control">
+    <text x="50" y="530" class="section-title">Polygon Formation Loop (Repeat until closure or dead-end)</text>
+    
+    <!-- Decision diamond -->
+    <polygon points="150,570 220,620 150,670 80,620" class="box" stroke="#ffa500" stroke-width="2" fill="#2a2a3a"/>
+    <text x="150" y="625" text-anchor="middle" class="label">Endpoints</text>
+    <text x="150" y="640" text-anchor="middle" class="label">match?</text>
+    
+    <!-- Yes path -->
+    <g>
+      <path d="M 220 620 L 350 620" class="arrow"/>
+      <text x="270" y="615" class="label" style="fill: #90ee90;">YES (Closed)</text>
+      
+      <!-- Create polygon -->
+      <rect x="350" y="590" width="140" height="60" class="highlight-box"/>
+      <text x="420" y="610" text-anchor="middle" class="step-title">Create Polygon</text>
+      <text x="420" y="628" text-anchor="middle" class="label">from closed path</text>
+    </g>
+    
+    <!-- No path -->
+    <g>
+      <path d="M 150 670 L 150 750" class="arrow"/>
+      <text x="160" y="720" class="label" style="fill: #ffa500;">NO (Open)</text>
+      
+      <!-- Query next -->
+      <rect x="80" y="750" width="140" height="60" class="highlight-box"/>
+      <text x="150" y="770" text-anchor="middle" class="step-title">Query for next</text>
+      <text x="150" y="788" text-anchor="middle" class="label">segment at current</text>
+    </g>
+    
+    <!-- Dead end -->
+    <g>
+      <path d="M 150 810 L 150 860" class="arrow"/>
+      <text x="160" y="840" class="label" style="fill: #ff6b6b;">No candidates</text>
+      
+      <!-- Create linestring -->
+      <rect x="80" y="860" width="140" height="60" class="highlight-box"/>
+      <text x="150" y="880" text-anchor="middle" class="step-title">Create LineString</text>
+      <text x="150" y="898" text-anchor="middle" class="label">from open path</text>
+    </g>
+  </g>
+
+  <!-- Output section -->
+  <g id="outputs">
+    <text x="600" y="530" class="section-title">Possible Outputs</text>
+    
+    <!-- Closed Polygon -->
+    <g>
+      <rect x="550" y="560" width="280" height="350" class="box"/>
+      <text x="690" y="585" text-anchor="middle" class="step-title">Output 1: Polygon</text>
+      <text x="690" y="600" text-anchor="middle" class="label">(Closed Isoline)</text>
+      
+      <!-- Draw polygon -->
+      <polygon points="600,640 680,620 720,720 680,760 600,730" class="polygon"/>
+      <polyline points="600,640 680,620 720,720 680,760 600,730 600,640" class="linestring"/>
+      
+      <!-- Properties -->
+      <rect x="560" y="800" width="260" height="100" fill="#1a2a2e" stroke="#333" stroke-width="1" rx="3"/>
+      <text x="690" y="820" text-anchor="middle" class="label" style="fill: #90ee90;">Properties:</text>
+      <text x="575" y="840" class="value">• Start/end at same point (within ε)</text>
+      <text x="575" y="856" class="value">• Represents closed region</text>
+      <text x="575" y="872" class="value">• May have interior holes (multipart)</text>
+      <text x="575" y="888" class="value">• Must be valid (no self-intersect)</text>
+    </g>
+    
+    <!-- Open LineString -->
+    <g>
+      <rect x="880" y="560" width="280" height="350" class="box"/>
+      <text x="1020" y="585" text-anchor="middle" class="step-title">Output 2: LineString</text>
+      <text x="1020" y="600" text-anchor="middle" class="label">(Open Isoline)</text>
+      
+      <!-- Draw linestring -->
+      <polyline points="930,650 980,630 1020,680 1060,700 1100,740" fill="none" class="linestring"/>
+      <circle cx="930" cy="650" r="4" fill="#00ff00"/>
+      <circle cx="1100" cy="740" r="4" fill="#ff6b6b"/>
+      
+      <text x="1000" y="770" text-anchor="middle" class="label" style="fill: #90ee90;">START</text>
+      <text x="1090" y="765" text-anchor="middle" class="label" style="fill: #ff6b6b;">END</text>
+      
+      <!-- Properties -->
+      <rect x="890" y="800" width="260" height="100" fill="#1a2a2e" stroke="#333" stroke-width="1" rx="3"/>
+      <text x="1020" y="820" text-anchor="middle" class="label" style="fill: #90ee90;">Properties:</text>
+      <text x="905" y="840" class="value">• Start and end differ (≥ε apart)</text>
+      <text x="905" y="856" class="value">• Extends to domain boundary</text>
+      <text x="905" y="872" class="value">• Open curve, not closed</text>
+      <text x="905" y="888" class="value">• Common for global datasets</text>
+    </g>
+  </g>
+
+  <!-- Algorithm Complexity -->
+  <g id="complexity">
+    <text x="1200" y="530" class="section-title">Computational Complexity</text>
+    
+    <rect x="1160" y="560" width="410" height="350" class="box"/>
+    
+    <text x="1365" y="590" text-anchor="middle" class="step-title">Stage 3: Polygon Formation</text>
+    
+    <!-- Time complexity -->
+    <rect x="1180" y="620" width="370" height="80" fill="#1a2a2e" stroke="#333" stroke-width="1" rx="3"/>
+    <text x="1365" y="640" text-anchor="middle" class="label" style="fill: #00d4ff;">Time Complexity</text>
+    <text x="1195" y="660" class="value">• Process each segment once: O(m)</text>
+    <text x="1195" y="678" class="value">• Per segment, R-tree query: O(log n) average</text>
+    <text x="1365" y="698" text-anchor="middle" class="label" style="fill: #90ee90; font-weight: bold;">Total: O(m log n)</text>
+    
+    <!-- Space complexity -->
+    <rect x="1180" y="720" width="370" height="95" fill="#1a2a2e" stroke="#333" stroke-width="1" rx="3"/>
+    <text x="1365" y="740" text-anchor="middle" class="label" style="fill: #00d4ff;">Space Complexity</text>
+    <text x="1195" y="760" class="value">• Input segments: O(m)</text>
+    <text x="1195" y="778" class="value">• R-tree index: O(m)</text>
+    <text x="1195" y="796" class="value">• Output geometries: O(m)</text>
+    <text x="1365" y="816" text-anchor="middle" class="label" style="fill: #90ee90; font-weight: bold;">Total: O(m)</text>
+  </g>
+</svg>

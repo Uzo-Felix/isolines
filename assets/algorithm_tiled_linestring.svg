@@ -1,0 +1,310 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" width="1400" height="1000">
+  <defs>
+    <style>
+      .title { font-size: 26px; font-weight: bold; fill: #00d4ff; }
+      .subtitle { font-size: 14px; fill: #aaa; }
+      .section-title { font-size: 15px; font-weight: bold; fill: #00d4ff; }
+      .step-label { font-size: 12px; fill: #ccc; }
+      .tile-label { font-size: 11px; fill: #aaa; }
+      .segment { stroke: #00d4ff; stroke-width: 2; }
+      .segment-thick { stroke: #00d4ff; stroke-width: 2.5; }
+      .endpoint { fill: #00ff00; }
+      .endpoint-matched { fill: #90ee90; stroke: #90ee90; stroke-width: 2; }
+      .endpoint-unmatched { fill: #ff6b6b; stroke: #ff6b6b; stroke-width: 2; }
+      .boundary { stroke: #ffa500; stroke-width: 2; stroke-dasharray: 4,4; }
+      .merged { stroke: #90ee90; stroke-width: 2.5; }
+      .tile-grid { stroke: #333; stroke-width: 1; fill: none; }
+      .tile-bg { fill: #1a2a3a; }
+      .gap { stroke: #ff6b6b; stroke-width: 2; stroke-dasharray: 2,2; }
+      .box { fill: #1a1a2e; stroke: #333; stroke-width: 1; }
+      .highlight-box { fill: #2a3a2a; stroke: #90ee90; stroke-width: 1.5; }
+      .arrow { stroke: #ffa500; stroke-width: 1.5; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#ffa500"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1000" fill="#0f0f1e"/>
+
+  <!-- Title -->
+  <text x="700" y="35" text-anchor="middle" class="title">Approach 1: LineString-Based Tile Processing</text>
+  <text x="700" y="60" text-anchor="middle" class="subtitle">Independent processing with boundary merging</text>
+
+  <!-- Phase 1: Individual Tile Processing -->
+  <g id="phase1">
+    <text x="50" y="95" class="section-title">Phase 1: Process Each Tile Independently</text>
+    
+    <!-- Tile 1 -->
+    <g id="tile1">
+      <rect x="20" y="120" width="180" height="180" class="tile-bg" stroke="#666" stroke-width="1"/>
+      <rect x="20" y="120" width="180" height="180" class="tile-grid"/>
+      
+      <text x="110" y="110" text-anchor="middle" class="step-label">Tile (0,0)</text>
+      
+      <!-- Segments within tile -->
+      <line x1="40" y1="150" x2="80" y2="140" class="segment-thick"/>
+      <line x1="85" y1="160" x2="120" y2="190" class="segment-thick"/>
+      <line x1="125" y1="200" x2="180" y2="260" class="segment-thick"/>
+      
+      <!-- Endpoints -->
+      <circle cx="40" cy="150" r="2.5" class="endpoint"/>
+      <circle cx="80" cy="140" r="2.5" class="endpoint"/>
+      <circle cx="180" cy="260" r="2.5" class="endpoint"/>
+      
+      <!-- Right boundary marker -->
+      <line x1="200" y1="120" x2="200" y2="300" class="boundary"/>
+      
+      <text x="110" y="320" text-anchor="middle" class="tile-label">CONREC(tile)</text>
+      <text x="110" y="335" text-anchor="middle" class="tile-label">→ 3 segments</text>
+    </g>
+    
+    <!-- Tile 2 (right neighbor) -->
+    <g id="tile2">
+      <rect x="220" y="120" width="180" height="180" class="tile-bg" stroke="#666" stroke-width="1"/>
+      <rect x="220" y="120" width="180" height="180" class="tile-grid"/>
+      
+      <text x="310" y="110" text-anchor="middle" class="step-label">Tile (0,1)</text>
+      
+      <!-- Segments within tile, partial from left -->
+      <line x1="220" y1="265" x2="260" y2="240" class="segment-thick"/>
+      <line x1="265" y1="235" x2="300" y2="200" class="segment-thick"/>
+      <line x1="305" y1="190" x2="380" y2="160" class="segment-thick"/>
+      
+      <!-- Endpoints -->
+      <circle cx="220" cy="265" r="2.5" class="endpoint"/>
+      <circle cx="380" cy="160" r="2.5" class="endpoint"/>
+      
+      <!-- Left boundary marker -->
+      <line x1="200" y1="120" x2="200" y2="300" class="boundary"/>
+      
+      <text x="310" y="320" text-anchor="middle" class="tile-label">CONREC(tile)</text>
+      <text x="310" y="335" text-anchor="middle" class="tile-label">→ 3 segments</text>
+    </g>
+    
+    <!-- Tile 3 (bottom neighbor) -->
+    <g id="tile3">
+      <rect x="420" y="120" width="180" height="180" class="tile-bg" stroke="#666" stroke-width="1"/>
+      <rect x="420" y="120" width="180" height="180" class="tile-grid"/>
+      
+      <text x="510" y="110" text-anchor="middle" class="step-label">Tile (1,0)</text>
+      
+      <!-- Segments within tile -->
+      <line x1="440" y1="140" x2="480" y2="160" class="segment-thick"/>
+      <line x1="485" y1="165" x2="550" y2="250" class="segment-thick"/>
+      <line x1="555" y1="260" x2="590" y2="290" class="segment-thick"/>
+      
+      <!-- Endpoints -->
+      <circle cx="440" cy="140" r="2.5" class="endpoint"/>
+      <circle cx="590" cy="290" r="2.5" class="endpoint"/>
+      
+      <!-- Top boundary marker -->
+      <line x1="420" y1="100" x2="600" y2="100" class="boundary"/>
+      
+      <text x="510" y="320" text-anchor="middle" class="tile-label">CONREC(tile)</text>
+      <text x="510" y="335" text-anchor="middle" class="tile-label">→ 3 segments</text>
+    </g>
+    
+    <!-- Tile 4 (bottom-right) -->
+    <g id="tile4">
+      <rect x="620" y="120" width="180" height="180" class="tile-bg" stroke="#666" stroke-width="1"/>
+      <rect x="620" y="120" width="180" height="180" class="tile-grid"/>
+      
+      <text x="710" y="110" text-anchor="middle" class="step-label">Tile (1,1)</text>
+      
+      <!-- Segments within tile -->
+      <line x1="640" y1="150" x2="690" y2="140" class="segment-thick"/>
+      <line x1="695" y1="145" x2="750" y2="200" class="segment-thick"/>
+      <line x1="755" y1="210" x2="790" y2="280" class="segment-thick"/>
+      
+      <!-- Endpoints -->
+      <circle cx="640" cy="150" r="2.5" class="endpoint"/>
+      <circle cx="790" cy="280" r="2.5" class="endpoint"/>
+      
+      <text x="710" y="320" text-anchor="middle" class="tile-label">CONREC(tile)</text>
+      <text x="710" y="335" text-anchor="middle" class="tile-label">→ 3 segments</text>
+    </g>
+  </g>
+
+  <!-- Phase 2: Identify Boundary Endpoints -->
+  <g id="phase2">
+    <text x="850" y="95" class="section-title">Phase 2: Mark Boundary Endpoints</text>
+    
+    <!-- Boundary endpoints visualization -->
+    <rect x="820" y="120" width="350" height="220" class="box"/>
+    
+    <text x="995" y="150" text-anchor="middle" class="step-label">Endpoints at Tile Boundaries</text>
+    
+    <!-- Tile boundaries -->
+    <line x1="850" y1="170" x2="1140" y2="170" stroke="#666" stroke-width="1" stroke-dasharray="2,2"/>
+    <line x1="850" y1="220" x2="1140" y2="220" stroke="#666" stroke-width="1" stroke-dasharray="2,2"/>
+    <line x1="995" y1="140" x2="995" y2="310" stroke="#666" stroke-width="1" stroke-dasharray="2,2"/>
+    
+    <!-- Endpoints in different regions -->
+    <!-- Top-left region -->
+    <circle cx="880" cy="160" r="3" class="endpoint"/>
+    <text x="860" y="165" class="tile-label">interior</text>
+    
+    <!-- Top-right region (boundary) -->
+    <circle cx="1020" cy="160" r="3" class="endpoint-unmatched"/>
+    <text x="1030" y="165" class="tile-label">boundary</text>
+    
+    <!-- Bottom-left region (boundary) -->
+    <circle cx="880" cy="240" r="3" class="endpoint-unmatched"/>
+    <text x="860" y="245" class="tile-label">boundary</text>
+    
+    <!-- Bottom-right region -->
+    <circle cx="1020" cy="240" r="3" class="endpoint"/>
+    <text x="1030" y="245" class="tile-label">interior</text>
+    
+    <!-- Center (boundary intersection) -->
+    <circle cx="995" cy="195" r="4" class="endpoint-unmatched" stroke-width="2"/>
+    <text x="1050" y="200" class="tile-label">← candidates for</text>
+    <text x="1050" y="215" class="tile-label">  matching</text>
+    
+    <text x="995" y="280" text-anchor="middle" class="tile-label">Unmatched endpoints at boundaries</text>
+    <text x="995" y="295" text-anchor="middle" class="tile-label">are candidates for merging</text>
+  </g>
+
+  <!-- Phase 3: Build LineStrings -->
+  <g id="phase3">
+    <text x="50" y="400" class="section-title">Phase 3: Build LineStrings Within Each Tile</text>
+    
+    <!-- Tile 1 LineStrings -->
+    <g>
+      <rect x="20" y="430" width="180" height="120" class="tile-bg" stroke="#666" stroke-width="1"/>
+      <text x="110" y="450" text-anchor="middle" class="step-label">Tile (0,0)</text>
+      
+      <polyline points="40,470 80,460 120,490 180,550" fill="none" class="merged" stroke-width="2.5"/>
+      <circle cx="40" cy="470" r="2.5" class="endpoint"/>
+      <circle cx="180" cy="550" r="2.5" class="endpoint"/>
+      
+      <text x="110" y="570" text-anchor="middle" class="tile-label">1 LineString</text>
+    </g>
+    
+    <!-- Tile 2 LineStrings -->
+    <g>
+      <rect x="220" y="430" width="180" height="120" class="tile-bg" stroke="#666" stroke-width="1"/>
+      <text x="310" y="450" text-anchor="middle" class="step-label">Tile (0,1)</text>
+      
+      <polyline points="220,475 260,450 300,410 380,370" fill="none" class="merged" stroke-width="2.5"/>
+      <circle cx="220" cy="475" r="2.5" class="endpoint"/>
+      <circle cx="380" cy="370" r="2.5" class="endpoint"/>
+      
+      <text x="310" y="570" text-anchor="middle" class="tile-label">1 LineString</text>
+    </g>
+    
+    <!-- Arrows showing matching process -->
+    <path d="M 200 490 L 220 490" class="arrow" stroke="#ffa500"/>
+    <text x="210" y="485" class="tile-label" style="fill: #ffa500; font-size: 10px;">MATCH</text>
+  </g>
+
+  <!-- Phase 4: Endpoint Matching and Merging -->
+  <g id="phase4">
+    <text x="50" y="620" class="section-title">Phase 4: Query &amp; Match Endpoints Across Neighbors</text>
+    
+    <!-- Tile pair showing matching -->
+    <g>
+      <rect x="20" y="650" width="360" height="200" class="box"/>
+      
+      <!-- Left tile segment -->
+      <line x1="80" y1="700" x2="140" y2="720" class="segment-thick"/>
+      <circle cx="140" cy="720" r="2.5" class="endpoint-unmatched"/>
+      <text x="140" y="745" text-anchor="middle" class="tile-label">end(s₁)</text>
+      
+      <!-- Search radius -->
+      <circle cx="140" cy="720" r="25" fill="none" stroke="#90ee90" stroke-width="1.5" stroke-dasharray="3,3"/>
+      
+      <!-- Right tile segment -->
+      <line x1="180" y1="715" x2="240" y2="740" class="segment-thick"/>
+      <circle cx="180" cy="715" r="2.5" class="endpoint-unmatched"/>
+      <text x="180" y="745" text-anchor="middle" class="tile-label">start(s₂)</text>
+      
+      <!-- Boundary line -->
+      <line x1="160" y1="650" x2="160" y2="850" class="boundary"/>
+      <text x="160" y="875" text-anchor="middle" class="tile-label">Boundary</text>
+      
+      <!-- Distance calculation -->
+      <text x="320" y="680" class="tile-label" style="fill: #00d4ff;">ENDPOINT_MATCH:</text>
+      <text x="320" y="700" class="tile-label">d = sqrt((180-140)² +</text>
+      <text x="320" y="715" class="tile-label">        (715-720)²)</text>
+      <text x="320" y="730" class="tile-label">d ≈ 0.0001° &lt; ε</text>
+      <text x="320" y="750" class="tile-label" style="fill: #90ee90; font-weight: bold;">✓ MATCH!</text>
+    </g>
+    
+    <!-- Merge result -->
+    <g>
+      <rect x="420" y="650" width="360" height="200" class="box"/>
+      <text x="600" y="675" text-anchor="middle" class="step-label">Merged LineString</text>
+      
+      <!-- Merged curve -->
+      <polyline points="450,720 500,700 550,720 600,740 650,750" fill="none" class="merged" stroke-width="3"/>
+      
+      <!-- Endpoints -->
+      <circle cx="450" cy="720" r="3" class="endpoint"/>
+      <circle cx="650" cy="750" r="3" class="endpoint"/>
+      
+      <!-- Connection point -->
+      <circle cx="550" cy="720" r="5" fill="none" stroke="#90ee90" stroke-width="2"/>
+      <text x="600" y="780" text-anchor="middle" class="tile-label">Duplicate endpoint</text>
+      <text x="600" y="795" text-anchor="middle" class="tile-label">removed</text>
+      
+      <text x="600" y="825" text-anchor="middle" class="step-label" style="fill: #90ee90;">MERGE(s₁, s₂)</text>
+    </g>
+  </g>
+
+  <!-- Algorithm box -->
+  <g id="algorithm">
+    <text x="850" y="400" class="section-title">Algorithm Summary</text>
+    
+    <rect x="820" y="430" width="350" height="420" class="box"/>
+    
+    <!-- Algorithm steps -->
+    <text x="840" y="460" class="step-label" style="fill: #00d4ff;">For each tile:</text>
+    <text x="855" y="480" class="tile-label">1. Apply CONREC</text>
+    <text x="855" y="498" class="tile-label">2. Build LineStrings (connect</text>
+    <text x="865" y="513" class="tile-label">   segments sharing endpoints)</text>
+    <text x="855" y="531" class="tile-label">3. For each processed neighbor:</text>
+    <text x="870" y="549" class="tile-label">   a. Compare endpoints of</text>
+    <text x="880" y="564" class="tile-label">      current tile's LineStrings</text>
+    <text x="870" y="582" class="tile-label">   b. with neighbor's LineStrings</text>
+    <text x="855" y="600" class="tile-label">4. If ENDPOINT_MATCH(ls₁, ls₂):</text>
+    <text x="870" y="618" class="tile-label">   → MERGE(ls₁, ls₂)</text>
+    <text x="855" y="636" class="tile-label">5. Output merged LineString</text>
+    <text x="855" y="654" class="tile-label">   or Polygon (if naturally closed)</text>
+    
+    <!-- Results box -->
+    <rect x="830" y="680" width="330" height="150" fill="#1a2a2e" stroke="#333" stroke-width="1" rx="3"/>
+    <text x="995" y="705" text-anchor="middle" class="step-label" style="fill: #ffa500;">Observed Results</text>
+    <text x="845" y="730" class="tile-label">Boundary Continuity: 57.8%</text>
+    <text x="845" y="748" class="tile-label">Visual Gaps: 14</text>
+    <text x="845" y="766" class="tile-label">Processing Time: 0.60s</text>
+    <text x="845" y="784" class="tile-label">Features: 102 (vs. 52 ref)</text>
+    <text x="995" y="815" text-anchor="middle" class="tile-label" style="fill: #ff6b6b;">Moderate gaps at</text>
+    <text x="995" y="830" text-anchor="middle" class="tile-label" style="fill: #ff6b6b;">tile boundaries</text>
+  </g>
+
+  <!-- Advantages / Disadvantages -->
+  <g id="trade-offs">
+    <text x="50" y="900" class="section-title">Trade-offs</text>
+    
+    <!-- Advantages -->
+    <rect x="20" y="920" width="340" height="60" fill="#1a2a1a" stroke="#90ee90" stroke-width="1.5" rx="3"/>
+    <text x="190" y="940" text-anchor="middle" class="step-label" style="fill: #90ee90;">Advantages</text>
+    <text x="35" y="960" class="tile-label">✓ Simple implementation</text>
+    <text x="35" y="978" class="tile-label">✓ Preserves natural topology</text>
+    
+    <!-- Disadvantages -->
+    <rect x="380" y="920" width="340" height="60" fill="#2a1a1a" stroke="#ff6b6b" stroke-width="1.5" rx="3"/>
+    <text x="550" y="940" text-anchor="middle" class="step-label" style="fill: #ff6b6b;">Disadvantages</text>
+    <text x="395" y="960" class="tile-label">✗ Moderate continuity (57.8%)</text>
+    <text x="395" y="978" class="tile-label">✗ Visible gaps at boundaries</text>
+    
+    <!-- Best for -->
+    <rect x="740" y="920" width="320" height="60" fill="#1a2a3a" stroke="#00d4ff" stroke-width="1.5" rx="3"/>
+    <text x="900" y="940" text-anchor="middle" class="step-label" style="fill: #00d4ff;">Best For</text>
+    <text x="755" y="960" class="tile-label">Quick prototyping</text>
+    <text x="755" y="978" class="tile-label">Applications tolerating minor gaps</text>
+  </g>
+</svg>

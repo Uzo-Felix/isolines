@@ -1,0 +1,276 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <defs>
+    <style>
+      .title { font-size: 24px; font-weight: bold; fill: #00d4ff; }
+      .case-title { font-size: 16px; font-weight: bold; fill: #fff; }
+      .case-label { font-size: 12px; fill: #ccc; }
+      .case-value { font-size: 11px; fill: #aaa; }
+      .vertex-above { fill: #ff6b6b; }
+      .vertex-below { fill: #4ecdc4; }
+      .vertex-on { fill: #95e1d3; }
+      .contour-line { stroke: #ffa500; stroke-width: 2; stroke-dasharray: 5,5; }
+      .segment { stroke: #00d4ff; stroke-width: 2; }
+      .triangle { stroke: #666; stroke-width: 1; fill: none; }
+      .case-bg { fill: #1a1a2e; stroke: #333; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="900" fill="#0f0f1e"/>
+
+  <!-- Title -->
+  <text x="800" y="35" text-anchor="middle" class="title">CONREC Algorithm: 10 Triangle Cases</text>
+
+  <!-- ==================== ROW 1: Cases A, B, C, D, E ==================== -->
+
+  <!-- Case A: All Above -->
+  <g id="case-a">
+    <rect x="20" y="60" width="280" height="280" class="case-bg"/>
+    <text x="160" y="85" text-anchor="middle" class="case-title">Case A: All Above</text>
+    
+    <!-- Triangle -->
+    <polygon points="160,130 80,280 240,280" class="triangle"/>
+    
+    <!-- Vertices - all above -->
+    <circle cx="160" cy="130" r="6" class="vertex-above"/>
+    <circle cx="80" cy="280" r="6" class="vertex-above"/>
+    <circle cx="240" cy="280" r="6" class="vertex-above"/>
+    
+    <!-- Contour line -->
+    <line x1="50" y1="240" x2="270" y2="240" class="contour-line"/>
+    <text x="160" y="320" text-anchor="middle" class="case-value">z0 ≥ L, z1 ≥ L, z2 ≥ L</text>
+    <text x="160" y="335" text-anchor="middle" class="case-value">Output: NO SEGMENT</text>
+  </g>
+
+  <!-- Case B: 2 Below, 1 On -->
+  <g id="case-b">
+    <rect x="320" y="60" width="280" height="280" class="case-bg"/>
+    <text x="460" y="85" text-anchor="middle" class="case-title">Case B: 2 Below, 1 On</text>
+    
+    <!-- Triangle -->
+    <polygon points="460,130 380,280 540,280" class="triangle"/>
+    
+    <!-- Vertices -->
+    <circle cx="460" cy="130" r="6" class="vertex-on"/>
+    <circle cx="380" cy="280" r="6" class="vertex-below"/>
+    <circle cx="540" cy="280" r="6" class="vertex-below"/>
+    
+    <!-- Contour line through middle vertex -->
+    <line x1="350" y1="130" x2="570" y2="130" class="contour-line"/>
+    
+    <!-- Output segment: between ON vertices (but only one is on, so segment from on to somewhere) -->
+    <text x="460" y="320" text-anchor="middle" class="case-value">z0 = L, z1 &lt; L, z2 &lt; L</text>
+    <text x="460" y="335" text-anchor="middle" class="case-value">Output: Vertex-to-Vertex</text>
+  </g>
+
+  <!-- Case C: 2 Below, 1 Above -->
+  <g id="case-c">
+    <rect x="620" y="60" width="280" height="280" class="case-bg"/>
+    <text x="760" y="85" text-anchor="middle" class="case-title">Case C: 2 Below, 1 Above</text>
+    
+    <!-- Triangle -->
+    <polygon points="760,130 680,280 840,280" class="triangle"/>
+    
+    <!-- Vertices -->
+    <circle cx="760" cy="130" r="6" class="vertex-above"/>
+    <circle cx="680" cy="280" r="6" class="vertex-below"/>
+    <circle cx="840" cy="280" r="6" class="vertex-below"/>
+    
+    <!-- Contour line -->
+    <line x1="650" y1="200" x2="870" y2="200" class="contour-line"/>
+    
+    <!-- Interpolated segment -->
+    <line x1="715" y1="200" x2="805" y2="200" class="segment" stroke-width="3"/>
+    <circle cx="715" cy="200" r="4" class="vertex-on" fill="#00ff00"/>
+    <circle cx="805" cy="200" r="4" class="vertex-on" fill="#00ff00"/>
+    
+    <text x="760" y="320" text-anchor="middle" class="case-value">z0 ≥ L, z1 &lt; L, z2 &lt; L</text>
+    <text x="760" y="335" text-anchor="middle" class="case-value">Output: 2 Interpolated</text>
+  </g>
+
+  <!-- Case D: 1 Below, 2 On -->
+  <g id="case-d">
+    <rect x="920" y="60" width="280" height="280" class="case-bg"/>
+    <text x="1060" y="85" text-anchor="middle" class="case-title">Case D: 1 Below, 2 On</text>
+    
+    <!-- Triangle -->
+    <polygon points="1060,130 980,280 1140,280" class="triangle"/>
+    
+    <!-- Vertices -->
+    <circle cx="1060" cy="130" r="6" class="vertex-below"/>
+    <circle cx="980" cy="280" r="6" class="vertex-on"/>
+    <circle cx="1140" cy="280" r="6" class="vertex-on"/>
+    
+    <!-- Contour line -->
+    <line x1="950" y1="280" x2="1170" y2="280" class="contour-line"/>
+    
+    <!-- Segment between ON vertices -->
+    <line x1="980" y1="280" x2="1140" y2="280" class="segment" stroke-width="3"/>
+    
+    <text x="1060" y="320" text-anchor="middle" class="case-value">z0 &lt; L, z1 = L, z2 = L</text>
+    <text x="1060" y="335" text-anchor="middle" class="case-value">Output: ON Vertex Segment</text>
+  </g>
+
+  <!-- Case E: 1 Below, 1 On, 1 Above -->
+  <g id="case-e">
+    <rect x="1220" y="60" width="280" height="280" class="case-bg"/>
+    <text x="1360" y="85" text-anchor="middle" class="case-title">Case E: 1-1-1 Mixed</text>
+    
+    <!-- Triangle -->
+    <polygon points="1360,130 1280,280 1440,280" class="triangle"/>
+    
+    <!-- Vertices -->
+    <circle cx="1360" cy="130" r="6" class="vertex-above"/>
+    <circle cx="1280" cy="280" r="6" class="vertex-below"/>
+    <circle cx="1440" cy="280" r="6" class="vertex-on"/>
+    
+    <!-- Contour line -->
+    <line x1="1250" y1="200" x2="1470" y2="200" class="contour-line"/>
+    
+    <!-- Segment from ON to interpolated -->
+    <line x1="1440" y1="280" x2="1330" y2="200" class="segment" stroke-width="3"/>
+    <circle cx="1330" cy="200" r="4" class="vertex-on" fill="#00ff00"/>
+    
+    <text x="1360" y="320" text-anchor="middle" class="case-value">z0 ≥ L, z1 &lt; L, z2 = L</text>
+    <text x="1360" y="335" text-anchor="middle" class="case-value">Output: ON + Interp</text>
+  </g>
+
+  <!-- ==================== ROW 2: Cases F, G, H, J, Interpolation Formula ==================== -->
+
+  <!-- Case F: 1 Below, 2 Above -->
+  <g id="case-f">
+    <rect x="20" y="420" width="280" height="280" class="case-bg"/>
+    <text x="160" y="445" text-anchor="middle" class="case-title">Case F: 1 Below, 2 Above</text>
+    
+    <!-- Triangle -->
+    <polygon points="160,490 80,640 240,640" class="triangle"/>
+    
+    <!-- Vertices -->
+    <circle cx="160" cy="490" r="6" class="vertex-below"/>
+    <circle cx="80" cy="640" r="6" class="vertex-above"/>
+    <circle cx="240" cy="640" r="6" class="vertex-above"/>
+    
+    <!-- Contour line -->
+    <line x1="50" y1="560" x2="270" y2="560" class="contour-line"/>
+    
+    <!-- Interpolated segment -->
+    <line x1="110" y1="560" x2="210" y2="560" class="segment" stroke-width="3"/>
+    <circle cx="110" cy="560" r="4" class="vertex-on" fill="#00ff00"/>
+    <circle cx="210" cy="560" r="4" class="vertex-on" fill="#00ff00"/>
+    
+    <text x="160" y="680" text-anchor="middle" class="case-value">z0 &lt; L, z1 ≥ L, z2 ≥ L</text>
+    <text x="160" y="695" text-anchor="middle" class="case-value">Output: 2 Interpolated</text>
+  </g>
+
+  <!-- Case G: All On Level (Rare) -->
+  <g id="case-g">
+    <rect x="320" y="420" width="280" height="280" class="case-bg"/>
+    <text x="460" y="445" text-anchor="middle" class="case-title">Case G: All On Level</text>
+    
+    <!-- Triangle -->
+    <polygon points="460,490 380,640 540,640" class="triangle"/>
+    
+    <!-- All vertices on level -->
+    <circle cx="460" cy="490" r="6" class="vertex-on"/>
+    <circle cx="380" cy="640" r="6" class="vertex-on"/>
+    <circle cx="540" cy="640" r="6" class="vertex-on"/>
+    
+    <!-- Contour line through all -->
+    <line x1="350" y1="490" x2="570" y2="640" class="contour-line"/>
+    
+    <text x="460" y="680" text-anchor="middle" class="case-value">z0 = L, z1 = L, z2 = L</text>
+    <text x="460" y="695" text-anchor="middle" class="case-value">Output: IGNORED (ambiguous)</text>
+    <text x="460" y="710" text-anchor="middle" class="case-value" style="fill: #ff6b6b;">Rare edge case</text>
+  </g>
+
+  <!-- Case H: 2 Above, 1 On -->
+  <g id="case-h">
+    <rect x="620" y="420" width="280" height="280" class="case-bg"/>
+    <text x="760" y="445" text-anchor="middle" class="case-title">Case H: 2 Above, 1 On</text>
+    
+    <!-- Triangle -->
+    <polygon points="760,490 680,640 840,640" class="triangle"/>
+    
+    <!-- Vertices -->
+    <circle cx="760" cy="490" r="6" class="vertex-on"/>
+    <circle cx="680" cy="640" r="6" class="vertex-above"/>
+    <circle cx="840" cy="640" r="6" class="vertex-above"/>
+    
+    <!-- Contour line -->
+    <line x1="650" y1="490" x2="870" y2="490" class="contour-line"/>
+    
+    <text x="760" y="680" text-anchor="middle" class="case-value">z0 = L, z1 ≥ L, z2 ≥ L</text>
+    <text x="760" y="695" text-anchor="middle" class="case-value">Output: NO SEGMENT</text>
+    <text x="760" y="710" text-anchor="middle" class="case-value">(Mirror of Case B)</text>
+  </g>
+
+  <!-- Case J: All Below -->
+  <g id="case-j">
+    <rect x="920" y="420" width="280" height="280" class="case-bg"/>
+    <text x="1060" y="445" text-anchor="middle" class="case-title">Case J: All Below</text>
+    
+    <!-- Triangle -->
+    <polygon points="1060,490 980,640 1140,640" class="triangle"/>
+    
+    <!-- All vertices below -->
+    <circle cx="1060" cy="490" r="6" class="vertex-below"/>
+    <circle cx="980" cy="640" r="6" class="vertex-below"/>
+    <circle cx="1140" cy="640" r="6" class="vertex-below"/>
+    
+    <!-- Contour line above -->
+    <line x1="950" y1="400" x2="1170" y2="400" class="contour-line"/>
+    
+    <text x="1060" y="680" text-anchor="middle" class="case-value">z0 &lt; L, z1 &lt; L, z2 &lt; L</text>
+    <text x="1060" y="695" text-anchor="middle" class="case-value">Output: NO SEGMENT</text>
+  </g>
+
+  <!-- Interpolation Formula -->
+  <g id="interpolation">
+    <rect x="1220" y="420" width="280" height="280" class="case-bg"/>
+    <text x="1360" y="445" text-anchor="middle" class="case-title">Linear Interpolation</text>
+    
+    <text x="1360" y="500" text-anchor="middle" class="case-value" style="font-size: 13px; fill: #00d4ff;">For edge crossing:</text>
+    <text x="1360" y="525" text-anchor="middle" class="case-value" style="font-size: 12px; font-family: monospace;">from z₁ to z₂ at level L</text>
+    
+    <line x1="1260" y1="550" x2="1460" y2="550" class="segment" stroke-width="2"/>
+    <circle cx="1260" cy="550" r="5" fill="#4ecdc4"/>
+    <circle cx="1460" cy="550" r="5" fill="#ff6b6b"/>
+    <text x="1240" y="545" text-anchor="end" class="case-value">z₁</text>
+    <text x="1480" y="545" text-anchor="start" class="case-value">z₂</text>
+    
+    <text x="1360" y="585" text-anchor="middle" class="case-value" style="font-size: 11px; font-family: monospace;">t = (L - z₁) / (z₂ - z₁)</text>
+    <text x="1360" y="605" text-anchor="middle" class="case-value" style="font-size: 11px; font-family: monospace;">p = c₁ + t·(c₂ - c₁)</text>
+    
+    <circle cx="1360" cy="550" r="4" fill="#95e1d3"/>
+    <text x="1360" y="625" text-anchor="middle" class="case-value" style="font-size: 10px;">Where c₁, c₂ are</text>
+    <text x="1360" y="640" text-anchor="middle" class="case-value" style="font-size: 10px;">corner coordinates</text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend" transform="translate(20, 770)">
+    <text x="0" y="0" class="case-title" style="font-size: 14px;">Legend:</text>
+    
+    <circle cx="0" cy="20" r="5" class="vertex-above"/>
+    <text x="15" y="25" class="case-value">Above Level</text>
+    
+    <circle cx="150" cy="20" r="5" class="vertex-below"/>
+    <text x="165" y="25" class="case-value">Below Level</text>
+    
+    <circle cx="280" cy="20" r="5" class="vertex-on"/>
+    <text x="295" y="25" class="case-value">On Level (z = L)</text>
+    
+    <line x1="450" y1="20" x2="480" y2="20" class="contour-line"/>
+    <text x="495" y="25" class="case-value">Contour Level</text>
+    
+    <line x1="700" y1="20" x2="730" y2="20" class="segment" stroke-width="2"/>
+    <text x="745" y="25" class="case-value">Output Segment</text>
+    
+    <circle cx="1000" cy="20" r="5" class="vertex-on" fill="#00ff00"/>
+    <text x="1015" y="25" class="case-value">Interpolated Point</text>
+  </g>
+
+  <!-- Summary Table -->
+  <g id="summary" transform="translate(20, 820)">
+    <text x="0" y="0" class="case-title" style="font-size: 13px;">Summary: A,J (none) | B,D,H (vertex) | C,F (interpolated 2) | E (mixed) | G (ignored)</text>
+  </g>
+</svg>
